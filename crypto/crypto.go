@@ -1,18 +1,15 @@
-package crypt
+package crypto
 
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/x509"
 	"math/big"
 )
 
 func CreateKey() (priv *ecdsa.PrivateKey, err error) {
-	priv, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		return nil, err
-	}
-	return priv, nil
+	return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 }
 
 func Sign(hash []byte, priv *ecdsa.PrivateKey) (r, s *big.Int, err error) {
@@ -26,4 +23,12 @@ func Sign(hash []byte, priv *ecdsa.PrivateKey) (r, s *big.Int, err error) {
 
 func Verify(hash []byte, pub *ecdsa.PublicKey, r, s *big.Int) (result bool) {
 	return ecdsa.Verify(pub, hash, r, s)
+}
+
+func SerializePrivateKey(priv *ecdsa.PrivateKey) ([]byte, error) {
+	return x509.MarshalECPrivateKey(priv)
+}
+
+func SerializePublicKey(pub *ecdsa.PublicKey) ([]byte, error) {
+	return x509.MarshalPKIXPublicKey(pub)
 }

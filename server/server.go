@@ -1,73 +1,77 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
-	"strconv"
 
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
-
-	"github.com/wojtechnology/medblocks/crypt"
+	"github.com/wojtechnology/medblocks/crypto"
+	"github.com/wojtechnology/medblocks/ledger"
 )
 
-type Person struct {
-	Name  string
-	Phone string
-}
-
-func hello(w http.ResponseWriter, r *http.Request) {
-	var response = "YOLO\nFAM\n"
-	for i := 0; i < 10; i++ {
-		response = response + strconv.Itoa(i) + "\n"
-	}
-	response = response + "wehjkgbaejlgkfahwef"
-	io.WriteString(w, response)
-
-}
+const PORT = "8000"
 
 func ecdsaExample() {
-	priv, err := crypt.CreateKey()
+	priv, err := crypto.CreateKey()
 	if err != nil {
 		panic(err)
 	}
 	hash := []byte("YOLO FAM")
-	r, s, err := crypt.Sign(hash, priv)
+	r, s, err := crypto.Sign(hash, priv)
 	// should return true
-	fmt.Println(crypt.Verify(hash, &priv.PublicKey, r, s))
+	fmt.Println(crypto.Verify(hash, &priv.PublicKey, r, s))
 }
 
-func mongodbExample() {
-	session, err := mgo.Dial("127.0.0.1")
+type NewUserResponse struct {
+	Uid        string `json:"uid"`
+	PrivateKey string `json:"private_key"`
+}
+
+func newUser(w http.ResponseWriter, r *http.Request) {
+	priv, err := crypto.CreateKey()
+	if err != nil {
+		io.WriteString(w, "Error creating key\n")
+	}
+
+	var user *ledger.User
+	user, err = ledger.WriteUser(&priv.PublicKey)
+	if err != nil {
+		io.WriteString(w, "Unable to create user\n")
+	}
+
+	var privEncoded []byte
+	privEncoded, err = crypto.SerializePrivateKey(priv)
+	if err != nil {
+		io.WriteString(w, "Unable to serialize private key\n")
+	}
+
+	var resString []byte
+	response := NewUserResponse{Uid: user.Id, PrivateKey: string(privEncoded)}
+	resString, err = json.Marshal(response)
+	if err != nil {
+		io.WriteString(w, "Error serializing response\n")
+	}
+
+	io.WriteString(w, string(resString))
+}
+
+func setRoutes() {
+	http.HandleFunc("/new_user", newUser)
+}
+
+func serverInit() {
+	err := ledger.InitDB()
 	if err != nil {
 		panic(err)
 	}
-	defer session.Close()
+	defer ledger.Session.Close()
 
-	// Optional. Switch the session to a monotonic behavior.
-	session.SetMode(mgo.Monotonic, true)
-
-	c := session.DB("test").C("people")
-	err = c.Insert(&Person{"Ale", "+55 53 8116 9639"},
-		&Person{"Cla", "+55 53 8402 8510"})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	result := Person{}
-	err = c.Find(bson.M{"name": "Ale"}).One(&result)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println("Phone:", result.Phone)
+	setRoutes()
+	print("Listening on " + PORT + "\n")
+	http.ListenAndServe(":"+PORT, nil)
 }
 
 func main() {
-	// http.HandleFunc("/", hello)
-	// http.ListenAndServe(":8000", nil)
-	// mongodbExample()
-	ecdsaExample()
+	serverInit()
 }
