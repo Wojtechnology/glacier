@@ -14,7 +14,6 @@ type (
 
 /*
 * Hash helper methods
-* TODO: Write tests
  */
 func BytesToHash(b []byte) Hash {
 	var hash Hash
@@ -51,7 +50,6 @@ func (hash *Hash) SetBytes(b []byte) {
 
 /*
 * Address helper methods
-* TODO: Write tests
  */
 func BytesToAddress(b []byte) Address {
 	var address Address
