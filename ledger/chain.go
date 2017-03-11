@@ -8,7 +8,12 @@ type Chain struct {
 	HeadCandidate *Block
 }
 
-func NewChain(database meddb.Database) *Chain {
-	chain := &Chain{DB: database}
-	return chain
+func NewChain(db meddb.Database) (*Chain, error) {
+	chain := &Chain{DB: db}
+	head, err := GetHeadBlock(db)
+	if err != nil {
+		return nil, err
+	}
+	chain.HeadCandidate = head
+	return chain, nil
 }

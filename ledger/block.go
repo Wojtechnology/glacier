@@ -10,11 +10,12 @@ import (
 	"github.com/wojtechnology/medblocks/meddb"
 )
 
-type BlockNonce [8]byte
-
 var (
 	blockHeaderPrefix = []byte("h")
 	blockBodyPrefix   = []byte("b")
+	headKey           = []byte("h")
+
+	genesisParentHash = StringToHash("The egg")
 )
 
 type BlockHeader struct {
@@ -24,10 +25,18 @@ type BlockHeader struct {
 	Nonce      BlockNonce
 }
 
-type Block struct {
-	Header       *BlockHeader
+type BlockBody struct {
 	Transactions []*Transaction
 }
+
+type Block struct {
+	Header *BlockHeader
+	Body   *BlockBody
+}
+
+// ----------------------
+// Block database helpers
+// ----------------------
 
 // Returns big-endian encoded block number for header
 func encodeBlockHeaderNumber(number uint64) []byte {
@@ -36,10 +45,28 @@ func encodeBlockHeaderNumber(number uint64) []byte {
 	return enc
 }
 
-func blockHeaderKey(hash Hash, number uint64) []byte {
+// Concatenates elements to build key for storing block parts in database
+func buildKey(prefix []byte, hash Hash, number uint64) []byte {
 	encNum := encodeBlockHeaderNumber(number)
-	return append(append(blockHeaderPrefix, hash.Bytes()...), encNum...)
+	return append(append(prefix, hash.Bytes()...), encNum...)
 }
+
+// Writes an object to database in rlp format
+func writeRlp(db meddb.Database, key []byte, obj interface{}) error {
+	data, err := rlp.EncodeToBytes(obj)
+	if err != nil {
+		return err
+	}
+
+	if err = db.Put(key, data); err != nil {
+		return err
+	}
+	return nil
+}
+
+// ----------------
+// Block Header API
+// ----------------
 
 // Returns Sha256 hash of block header in rlp format
 func (h *BlockHeader) Hash() (hash Hash) {
@@ -50,24 +77,22 @@ func (h *BlockHeader) Hash() (hash Hash) {
 	return hash
 }
 
-// Writes block to provided database in rlp format
+// Writes block header to provided database in rlp format
 func (h *BlockHeader) Write(db meddb.Database) error {
-	data, err := rlp.EncodeToBytes(h)
-	if err != nil {
-		return err
-	}
+	key := buildKey(blockHeaderPrefix, h.Hash(), h.Number.Uint64())
+	return writeRlp(db, key, h)
+}
 
-	key := blockHeaderKey(h.Hash(), h.Number.Uint64())
-	if err = db.Put(key, data); err != nil {
-		return err
-	}
-	return nil
+// Writes head block header to provided database in rlp format
+func (h *BlockHeader) WriteHead(db meddb.Database) error {
+	key := headKey
+	return writeRlp(db, key, h)
 }
 
 // Gets block header from database in rlp format, constructs object and returns
 func GetBlockHeader(db meddb.Database, hash Hash, number uint64) (*BlockHeader, error) {
 	// TODO: Think about the error handling in this function
-	key := blockHeaderKey(hash, number)
+	key := buildKey(blockHeaderPrefix, hash, number)
 	data, err := db.Get(key)
 	if err != nil {
 		return nil, err
@@ -80,22 +105,103 @@ func GetBlockHeader(db meddb.Database, hash Hash, number uint64) (*BlockHeader, 
 	return h, nil
 }
 
+// Gets head block header from database in rlp format, constructs objects and returns
+func GetHeadBlockHeader(db meddb.Database) (*BlockHeader, error) {
+	// TODO: Think about the error handling in this function
+	key := headKey
+	data, err := db.Get(key)
+	if err != nil {
+		return nil, err
+	}
+
+	h := new(BlockHeader)
+	if err := rlp.Decode(bytes.NewReader(data), h); err != nil {
+		return nil, err
+	}
+	return h, nil
+}
+
+// --------------
+// Block Body API
+// --------------
+
+// Writes block to provided database in rlp format
+func (b *BlockBody) Write(db meddb.Database, hash Hash, number uint64) error {
+	key := buildKey(blockBodyPrefix, hash, number)
+	return writeRlp(db, key, b)
+}
+
+func GetBlockBody(db meddb.Database, hash Hash, number uint64) (*BlockBody, error) {
+	// TODO: think about the error handling in this function
+	key := buildKey(blockBodyPrefix, hash, number)
+	data, err := db.Get(key)
+	if err != nil {
+		return nil, err
+	}
+
+	b := new(BlockBody)
+	if err = rlp.Decode(bytes.NewReader(data), b); err != nil {
+		return nil, err
+	}
+	return b, nil
+}
+
+// ---------
+// Block API
+// ---------
+
+// Gets whole block from database
+func GetBlock(db meddb.Database, hash Hash, number uint64) (*Block, error) {
+	header, err := GetBlockHeader(db, hash, number)
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := GetBlockBody(db, hash, number)
+	if err != nil {
+		return nil, err
+	}
+
+	b := &Block{
+		Header: header,
+		Body:   body,
+	}
+	return b, nil
+}
+
+// Gets whole head block from database
+func GetHeadBlock(db meddb.Database) (*Block, error) {
+	header, err := GetHeadBlockHeader(db)
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := GetBlockBody(db, header.Hash(), header.Number.Uint64())
+	if err != nil {
+		return nil, err
+	}
+
+	b := &Block{
+		Header: header,
+		Body:   body,
+	}
+	return b, nil
+}
+
 // Creates and returns genesis block
 func Genesis() *Block {
-	header := &BlockHeader{Number: big.NewInt(0), Dt: big.NewInt(0)}
-	genesis := &Block{Header: header}
+	header := &BlockHeader{
+		ParentHash: genesisParentHash,
+		Number:     big.NewInt(0),
+		Dt:         big.NewInt(0),
+		Nonce:      EncodeNonce(0),
+	}
+	body := &BlockBody{
+		Transactions: make([]*Transaction, 0),
+	}
+	genesis := &Block{
+		Header: header,
+		Body:   body,
+	}
 	return genesis
-}
-
-/*
-* BlockNonce helper methods
- */
-func EncodeNonce(i uint64) BlockNonce {
-	var nonce BlockNonce
-	binary.BigEndian.PutUint64(nonce[:], i)
-	return nonce
-}
-
-func (nonce BlockNonce) Uint64() uint64 {
-	return binary.BigEndian.Uint64(nonce[:])
 }

@@ -1,6 +1,9 @@
 package ledger
 
-import "math/big"
+import (
+	"encoding/binary"
+	"math/big"
+)
 
 const (
 	HashLength    = 32
@@ -8,8 +11,9 @@ const (
 )
 
 type (
-	Hash    [HashLength]byte
-	Address [AddressLength]byte
+	Hash       [HashLength]byte
+	Address    [AddressLength]byte
+	BlockNonce [8]byte
 )
 
 /*
@@ -91,4 +95,17 @@ func BytesToBig(b []byte) *big.Int {
 	i := new(big.Int)
 	i.SetBytes(b)
 	return i
+}
+
+/*
+* BlockNonce helper methods
+ */
+func EncodeNonce(i uint64) BlockNonce {
+	var nonce BlockNonce
+	binary.BigEndian.PutUint64(nonce[:], i)
+	return nonce
+}
+
+func (nonce BlockNonce) Uint64() uint64 {
+	return binary.BigEndian.Uint64(nonce[:])
 }

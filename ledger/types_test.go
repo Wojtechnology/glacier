@@ -58,3 +58,8 @@ func TestBigAddress(t *testing.T) {
 	i := big.NewInt(100)
 	test.AssertEqual(t, i, BigToAddress(i).Big())
 }
+
+func TestEncodeDecodeNonce(t *testing.T) {
+	var i uint64 = 42
+	test.AssertEqual(t, i, EncodeNonce(i).Uint64())
+}
