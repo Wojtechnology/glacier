@@ -27,8 +27,8 @@ func WriteUser(pub *ecdsa.PublicKey) (user *User, err error) {
 	id := uuid.NewV4()
 	user = &User{Id: id.String(), PublicKey: string(pubEncoded)}
 
-	c := Session.DB(DB).C(userCollection)
-	err = c.Insert(user)
+	// c := Session.DB(DB).C(userCollection)
+	// err = c.Insert(user)
 
 	return user, err
 }

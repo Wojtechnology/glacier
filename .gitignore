@@ -25,3 +25,6 @@ _testmain.go
 
 # Vim
 *.swp
+
+# Test output
+coverage.out

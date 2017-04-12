@@ -150,6 +150,40 @@ func GetBlockBody(db meddb.Database, hash Hash, number uint64) (*BlockBody, erro
 // Block API
 // ---------
 
+func (b *Block) writeBody(db meddb.Database) error {
+	err := b.Body.Write(db, b.Header.Hash(), b.Header.Number.Uint64())
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Writes block header and body to the database
+func (b *Block) Write(db meddb.Database) error {
+	err := b.Header.Write(db)
+	if err != nil {
+		return err
+	}
+	err = b.writeBody(db)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Writes block header and body to the database using the head block key
+func (b *Block) WriteHead(db meddb.Database) error {
+	err := b.Header.WriteHead(db)
+	if err != nil {
+		return err
+	}
+	err = b.writeBody(db)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // Gets whole block from database
 func GetBlock(db meddb.Database, hash Hash, number uint64) (*Block, error) {
 	header, err := GetBlockHeader(db, hash, number)
@@ -188,8 +222,26 @@ func GetHeadBlock(db meddb.Database) (*Block, error) {
 	return b, nil
 }
 
+// Gets and returns the genesis block if it exists in the database
+// Otherwise, creates the genesis block, commits it to the database and returns it
+func GetOrCreateGenesisBlock(db meddb.Database) (*Block, error) {
+	// TODO: test
+	gen := genesis()
+	curGen, err := GetBlock(db, gen.Header.Hash(), gen.Header.Number.Uint64())
+	if err != nil {
+		// Means that we haven't found the genesis block
+		err = gen.Write(db)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		gen = curGen
+	}
+	return gen, nil
+}
+
 // Creates and returns genesis block
-func Genesis() *Block {
+func genesis() *Block {
 	header := &BlockHeader{
 		ParentHash: genesisParentHash,
 		Number:     big.NewInt(0),

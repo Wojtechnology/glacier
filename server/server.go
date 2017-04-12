@@ -61,12 +61,6 @@ func setRoutes() {
 }
 
 func serverInit() {
-	err := ledger.InitDB()
-	if err != nil {
-		panic(err)
-	}
-	defer ledger.Session.Close()
-
 	setRoutes()
 	print("Listening on " + PORT + "\n")
 	http.ListenAndServe(":"+PORT, nil)

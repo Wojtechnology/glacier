@@ -8,12 +8,26 @@ type Chain struct {
 	HeadCandidate *Block
 }
 
+// Builds and returns a chain from the existing database
+// If the chain does not yet exist, creates a chain containing only genesis
 func NewChain(db meddb.Database) (*Chain, error) {
-	chain := &Chain{DB: db}
-	head, err := GetHeadBlock(db)
+	c := &Chain{DB: db}
+
+	gen, err := GetOrCreateGenesisBlock(db)
 	if err != nil {
 		return nil, err
 	}
-	chain.HeadCandidate = head
-	return chain, nil
+	c.Genesis = gen
+
+	head, err := GetHeadBlock(db)
+	if err != nil {
+		// Head block not found, set genesis as head block
+		err = gen.WriteHead(db)
+		if err != nil {
+			return nil, err
+		}
+		head = gen
+	}
+	c.HeadCandidate = head
+	return c, nil
 }
