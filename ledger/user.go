@@ -5,7 +5,7 @@ import (
 
 	"github.com/satori/go.uuid"
 
-	"github.com/wojtechnology/medblocks/crypto"
+	"github.com/wojtechnology/glacier/crypto"
 )
 
 const userCollection = "user"

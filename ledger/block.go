@@ -7,7 +7,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/wojtechnology/medblocks/meddb"
+	"github.com/wojtechnology/glacier/meddb"
 )
 
 var (

@@ -6,8 +6,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/wojtechnology/medblocks/crypto"
-	"github.com/wojtechnology/medblocks/ledger"
+	"github.com/wojtechnology/glacier/crypto"
+	"github.com/wojtechnology/glacier/ledger"
 )
 
 const PORT = "8000"

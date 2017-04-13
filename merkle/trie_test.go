@@ -3,7 +3,7 @@ package merkle
 import (
 	"testing"
 
-	"github.com/wojtechnology/medblocks/test"
+	"github.com/wojtechnology/glacier/test"
 )
 
 func buildTrie() *MerkleTrie {

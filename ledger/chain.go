@@ -1,6 +1,6 @@
 package ledger
 
-import "github.com/wojtechnology/medblocks/meddb"
+import "github.com/wojtechnology/glacier/meddb"
 
 type Chain struct {
 	DB            meddb.Database

@@ -4,8 +4,8 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/wojtechnology/medblocks/meddb"
-	"github.com/wojtechnology/medblocks/test"
+	"github.com/wojtechnology/glacier/meddb"
+	"github.com/wojtechnology/glacier/test"
 )
 
 func TestWriteReadBlockHeader(t *testing.T) {
