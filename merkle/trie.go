@@ -51,6 +51,7 @@ func (n *MerkleBranchNode) setChild(node MerkleNode) {
 }
 
 func (t *MerkleTrie) Get(key []byte) interface{} {
+	key = hexEncode(key)
 	branch := t.closestBranch(key)
 
 	if branch != nil {
@@ -81,6 +82,7 @@ func (t *MerkleTrie) Contains(key []byte) bool {
 // Returns whether addition was successful
 // It will be unsuccessful if the key already exists in the trie
 func (t *MerkleTrie) Add(key []byte, val interface{}) bool {
+	key = hexEncode(key)
 	newNode := &MerkleLeafNode{
 		key: key,
 		val: val,
@@ -210,4 +212,13 @@ func (t *MerkleTrie) closestBranch(key []byte) *MerkleBranchNode {
 	}
 
 	return prevBranch
+}
+
+func hexEncode(src []byte) []byte {
+	dst := make([]byte, 2*len(src))
+	for i := 0; i < len(src); i++ {
+		dst[2*i] = src[i] >> 4
+		dst[2*i+1] = src[i] & 15
+	}
+	return dst
 }
