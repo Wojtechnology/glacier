@@ -1,8 +1,9 @@
 package merkle
 
-import "bytes"
-
-const alphabetSize uint = 16
+import (
+	"bytes"
+	"fmt"
+)
 
 // Patricia hash trie
 type MerkleTrie struct {
@@ -15,15 +16,26 @@ type MerkleNode interface {
 }
 
 type MerkleLeafNode struct {
-	key []byte
-	val interface{}
+	key   []byte
+	val   interface{}
+	cache *HashCache
 }
 
 // Node in patricia hash trie
 type MerkleBranchNode struct {
-	children  [alphabetSize]MerkleNode
+	children  [16]MerkleNode
 	keyPrefix []byte
 	innerLeaf *MerkleLeafNode
+	cache     *HashCache
+}
+
+type MerkleHashNode struct {
+	hash []byte
+}
+
+type HashCache struct {
+	dirty bool
+	hash  []byte
 }
 
 func (n *MerkleLeafNode) Repr() []byte {
@@ -47,34 +59,59 @@ func (n *MerkleBranchNode) child(key []byte) MerkleNode {
 }
 
 func (n *MerkleBranchNode) setChild(node MerkleNode) {
-	n.children[node.Repr()[n.Len()]] = node
+	elem := &n.children[node.Repr()[n.Len()]]
+	if *elem != node {
+		*elem = node
+		if n.cache != nil {
+			n.cache.dirty = true
+		}
+	}
 }
 
+func (n *MerkleHashNode) Repr() []byte {
+	// Just defined to fit the interface
+	return n.hash
+}
+
+func (n *MerkleHashNode) Len() int {
+	// Just defined to fit the interface
+	return len(n.hash)
+}
+
+// Returns the value stored at key, nil if the key is not in the trie
 func (t *MerkleTrie) Get(key []byte) interface{} {
 	key = hexEncode(key)
-	branch := t.closestBranch(key)
+	branch, err := t.closestBranch(key)
+	if err != nil {
+		// TODO: Log
+		return nil
+	}
 
+	var val interface{} = nil
 	if branch != nil {
-		// Checking if branch contains leaf with key
 		if branch.Len() == len(key) {
-			if branch.innerLeaf != nil && bytes.Equal(key, branch.innerLeaf.key) {
-				return branch.innerLeaf.val
+			// Checking if branch contains leaf with key
+			val, err = t.getValue(branch, key)
+			if err != nil {
+				return nil
 			}
-		} else if leaf, ok := branch.child(key).(*MerkleLeafNode); ok {
-			if bytes.Equal(key, leaf.key) {
-				return leaf.val
+		} else {
+			val, err = t.getValue(branch.child(key), key)
+			if err != nil {
+				return nil
 			}
 		}
-	} else if leaf, ok := t.root.(*MerkleLeafNode); ok {
-		// Checking if root leaf has given key
-		if bytes.Equal(key, leaf.key) {
-			return leaf.val
+	} else {
+		val, err = t.getValue(t.root, key)
+		if err != nil {
+			return nil
 		}
 	}
 
-	return nil
+	return val
 }
 
+// Returns whether the trie contains given key
 func (t *MerkleTrie) Contains(key []byte) bool {
 	return t.Get(key) != nil
 }
@@ -82,6 +119,7 @@ func (t *MerkleTrie) Contains(key []byte) bool {
 // Returns whether addition was successful
 // It will be unsuccessful if the key already exists in the trie
 func (t *MerkleTrie) Add(key []byte, val interface{}) bool {
+	// TODO: maybe return error instead of bool
 	key = hexEncode(key)
 	newNode := &MerkleLeafNode{
 		key: key,
@@ -95,7 +133,12 @@ func (t *MerkleTrie) Add(key []byte, val interface{}) bool {
 
 	var longestPrefix []byte
 	var otherNode MerkleNode
-	branch := t.closestBranch(key)
+	branch, err := t.closestBranch(key)
+	if err != nil {
+		// TODO: Log and if you change this function to return error, return the error here
+		return false
+	}
+
 	if branch != nil {
 		if branch.Len() == len(key) {
 			if branch.innerLeaf != nil {
@@ -108,20 +151,29 @@ func (t *MerkleTrie) Add(key []byte, val interface{}) bool {
 			return true
 		} else {
 			// Prefix of branch was shorter than key
-			child := branch.child(key)
-			if leaf, ok := child.(*MerkleLeafNode); ok {
+			var child MerkleNode
+			child, err = t.maybeResolveNode(branch.child(key))
+			if err != nil {
+				// TODO: Log and if you change this function to return error, return the error here
+				return false
+			}
+
+			switch tChild := child.(type) {
+			case *MerkleLeafNode:
 				// Found leaf that has a common prefix with key longer than the prefix of branch
-				otherNode = leaf
-				longestPrefix = longestCommonPrefix(key, leaf.key)
-			} else if longBranch, ok := child.(*MerkleBranchNode); ok {
+				otherNode = tChild
+				longestPrefix = longestCommonPrefix(key, tChild.key)
+			case *MerkleBranchNode:
 				// Found branch that has a common prefix with key longer than the prefix of branch
-				otherNode = longBranch
-				longestPrefix = longestCommonPrefix(key, longBranch.keyPrefix)
-			} else {
+				otherNode = tChild
+				longestPrefix = longestCommonPrefix(key, tChild.keyPrefix)
+			case nil:
 				// A branch already exists at the required fork so we simply add the newNode as a
 				// child.
 				branch.setChild(newNode)
 				return true
+			default:
+				panic(fmt.Sprintf("Invalid node type: %T, %s", tChild, tChild))
 			}
 		}
 	} else {
@@ -184,14 +236,21 @@ func longestCommonPrefix(first, second []byte) []byte {
 }
 
 // Returns the closest branch node that has a keyPrefix length less than or equal to key
-func (t *MerkleTrie) closestBranch(key []byte) *MerkleBranchNode {
+func (t *MerkleTrie) closestBranch(key []byte) (*MerkleBranchNode, error) {
 	var prevBranch *MerkleBranchNode = nil
 	curNode := t.root
 
 	for curNode != nil {
-		switch curNode.(type) {
+		var err error
+		curNode, err = t.maybeResolveNode(curNode)
+		if err != nil {
+			// TODO: Log
+			return nil, err
+		}
+
+		switch tn := curNode.(type) {
 		case *MerkleLeafNode:
-			return prevBranch
+			return prevBranch, nil
 		case *MerkleBranchNode:
 			branch := curNode.(*MerkleBranchNode)
 
@@ -203,17 +262,55 @@ func (t *MerkleTrie) closestBranch(key []byte) *MerkleBranchNode {
 			} else if branch.Len() == len(key) &&
 				bytes.Equal(branch.keyPrefix, key) {
 				// Exact BranchNode found
-				return branch
+				return branch, nil
 			} else {
 				// Prefix did not match or prefix is longer than key
-				return prevBranch
+				return prevBranch, nil
 			}
+		default:
+			panic(fmt.Sprintf("Invalid node type: %T, %s", tn, tn))
 		}
 	}
 
-	return prevBranch
+	return prevBranch, nil
 }
 
+func (t *MerkleTrie) maybeResolveNode(n MerkleNode) (MerkleNode, error) {
+	if hashNode, ok := n.(*MerkleHashNode); ok {
+		// TODO: When we actually write nodes to db, implement this
+		return t.resolveNode(hashNode)
+	}
+	return n, nil
+}
+
+func (t *MerkleTrie) resolveNode(n *MerkleHashNode) (MerkleNode, error) {
+	return nil, fmt.Errorf("Not implemented error: cannot resolve node for MerkleHashNode")
+}
+
+// Returns the value that the node contains if it contains anything, nil otherwise
+func (t *MerkleTrie) getValue(n MerkleNode, key []byte) (interface{}, error) {
+	var err error
+	n, err = t.maybeResolveNode(n)
+	if err != nil {
+		return false, nil
+	}
+
+	switch tn := n.(type) {
+	case *MerkleBranchNode:
+		if tn.innerLeaf != nil && bytes.Equal(key, tn.innerLeaf.key) {
+			return tn.innerLeaf.val, nil
+		}
+	case *MerkleLeafNode:
+		if bytes.Equal(key, tn.key) {
+			return tn.val, nil
+		}
+	default:
+		return false, fmt.Errorf("Invalid node type: %T, %s", tn, tn)
+	}
+	return nil, nil
+}
+
+// Returns hex encoding of byte array
 func hexEncode(src []byte) []byte {
 	dst := make([]byte, 2*len(src))
 	for i := 0; i < len(src); i++ {
