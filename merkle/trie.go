@@ -46,6 +46,20 @@ func (n *MerkleLeafNode) Len() int {
 	return len(n.key)
 }
 
+func (n *MerkleLeafNode) hash() []byte {
+	if n.cache != nil && !n.cache.dirty {
+		return n.cache.hash
+	}
+	return nil
+}
+
+func (n *MerkleLeafNode) setHash(hash []byte) {
+	if n.cache == nil {
+		n.cache = &HashCache{}
+	}
+	n.cache.setHash(hash)
+}
+
 func (n *MerkleBranchNode) Repr() []byte {
 	return n.keyPrefix
 }
@@ -58,14 +72,26 @@ func (n *MerkleBranchNode) child(key []byte) MerkleNode {
 	return n.children[key[n.Len()]]
 }
 
+// Return whether the child was set (might not be if already exists)
 func (n *MerkleBranchNode) setChild(node MerkleNode) {
-	elem := &n.children[node.Repr()[n.Len()]]
-	if *elem != node {
-		*elem = node
-		if n.cache != nil {
-			n.cache.dirty = true
-		}
+	n.children[node.Repr()[n.Len()]] = node
+	if n.cache != nil {
+		n.cache.dirty = true
 	}
+}
+
+func (n *MerkleBranchNode) hash() []byte {
+	if n.cache != nil && !n.cache.dirty {
+		return n.cache.hash
+	}
+	return nil
+}
+
+func (n *MerkleBranchNode) setHash(hash []byte) {
+	if n.cache == nil {
+		n.cache = &HashCache{}
+	}
+	n.cache.setHash(hash)
 }
 
 func (n *MerkleHashNode) Repr() []byte {
@@ -76,6 +102,14 @@ func (n *MerkleHashNode) Repr() []byte {
 func (n *MerkleHashNode) Len() int {
 	// Just defined to fit the interface
 	return len(n.hash)
+}
+
+func (c *HashCache) setHash(hash []byte) {
+	if hash == nil {
+		panic("Hash cannot be nil\n")
+	}
+	c.dirty = false
+	c.hash = hash
 }
 
 // Returns the value stored at key, nil if the key is not in the trie
@@ -144,7 +178,18 @@ func (t *MerkleTrie) Add(key []byte, val interface{}) error {
 		t.root = &MerkleLeafNode{key: key, val: val}
 		return nil
 	}
-	return t.addInner(t.root, nil, key, val)
+	return t.addInnerInvalidate(t.root, nil, key, val)
+}
+
+// Recursive helper method for adding a node to the trie, invalidates the cache if addition was
+// successful
+func (t *MerkleTrie) addInnerInvalidate(n MerkleNode, prevBranch *MerkleBranchNode, key []byte,
+	val interface{}) error {
+	err := t.addInner(n, prevBranch, key, val)
+	if err == nil && prevBranch != nil && prevBranch.cache != nil {
+		prevBranch.cache.dirty = true
+	}
+	return err
 }
 
 // Recursive helper method for adding a node to the trie
@@ -177,6 +222,9 @@ func (t *MerkleTrie) addInner(n MerkleNode, prevBranch *MerkleBranchNode, key []
 				return AlreadyExistsError{Key: key, Node: n}
 			case nil:
 				tn.innerLeaf = &MerkleLeafNode{key: key, val: val}
+				if tn.cache != nil {
+					tn.cache.dirty = true
+				}
 				return nil
 			default:
 				panic(fmt.Sprintf("Invalid inner node type: %T, %s", tInner, tInner))
@@ -184,7 +232,7 @@ func (t *MerkleTrie) addInner(n MerkleNode, prevBranch *MerkleBranchNode, key []
 		} else if len(longestCommonPrefix(key, tn.keyPrefix)) == tn.Len() {
 			child := tn.child(key)
 			if child != nil {
-				return t.addInner(child, tn, key, val)
+				return t.addInnerInvalidate(child, tn, key, val)
 			} else {
 				tn.setChild(&MerkleLeafNode{key: key, val: val})
 				return nil

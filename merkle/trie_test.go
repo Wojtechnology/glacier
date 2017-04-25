@@ -12,25 +12,30 @@ func buildTrie() *MerkleTrie {
 	trie := &MerkleTrie{}
 
 	leaf := &MerkleLeafNode{
-		key: []byte{0, 0, 1, 0, 0, 2, 0, 3, 0, 4},
-		val: "someValue", // []byte{0, 16, 2, 3, 4}
+		key:   []byte{0, 0, 1, 0, 0, 2, 0, 3, 0, 4},
+		val:   "someValue", // []byte{0, 16, 2, 3, 4}
+		cache: &HashCache{dirty: false},
 	}
 	otherLeaf := &MerkleLeafNode{
-		key: []byte{0, 0, 2, 0}, // []byte{0, 32}
-		val: "someOtherValue",
+		key:   []byte{0, 0, 2, 0}, // []byte{0, 32}
+		val:   "someOtherValue",
+		cache: &HashCache{dirty: false},
 	}
 	innerLeaf := &MerkleLeafNode{
-		key: []byte{0, 0, 1, 0, 0, 2}, // []byte{0, 16, 2}
-		val: "someValueInner",
+		key:   []byte{0, 0, 1, 0, 0, 2}, // []byte{0, 16, 2}
+		val:   "someValueInner",
+		cache: &HashCache{dirty: false},
 	}
 
 	innerBranch := &MerkleBranchNode{
 		keyPrefix: []byte{0, 0, 1, 0, 0, 2}, // []byte{0, 16, 2}
 		innerLeaf: innerLeaf,
+		cache:     &HashCache{dirty: false},
 	}
 	innerBranch.children[0] = leaf
 	branch := &MerkleBranchNode{
 		keyPrefix: []byte{0, 0}, // []byte{0}
+		cache:     &HashCache{dirty: false},
 	}
 	branch.children[1] = innerBranch
 	branch.children[2] = otherLeaf
@@ -53,6 +58,18 @@ func buildRootLeafTrie() *MerkleTrie {
 
 func buildEmptyTrie() *MerkleTrie {
 	return &MerkleTrie{}
+}
+
+func assertIsDirty(t *testing.T, c *HashCache, name string) {
+	if c != nil && !c.dirty {
+		t.Errorf("true != %s.cache.dirty", name)
+	}
+}
+
+func assertIsNotDirty(t *testing.T, c *HashCache, name string) {
+	if c == nil || c.dirty {
+		t.Errorf("false != %s.cache.dirty", name)
+	}
 }
 
 // -------------
@@ -197,6 +214,42 @@ func TestAddAlreadyExistsLeaf(t *testing.T) {
 
 func TestAddAlreadyInnerLeaf(t *testing.T) {
 	testAddAlreadyExists(t, buildTrie(), []byte{0, 16, 2})
+}
+
+func TestAddInvalidatesCache(t *testing.T) {
+	val := "someValue"
+	key := []byte{0, 16, 2, 4}
+	trie := buildTrie()
+	branch := trie.root.(*MerkleBranchNode)
+	innerBranch := branch.children[1].(*MerkleBranchNode)
+	otherLeaf := branch.children[2].(*MerkleLeafNode)
+	leaf := innerBranch.children[0].(*MerkleLeafNode)
+	innerLeaf := innerBranch.innerLeaf.(*MerkleLeafNode)
+
+	assert.Nil(t, trie.Add(key, val))
+	assertIsDirty(t, branch.cache, "branch")
+	assertIsDirty(t, innerBranch.cache, "innerBranch")
+	assertIsNotDirty(t, otherLeaf.cache, "otherLeaf")
+	assertIsNotDirty(t, leaf.cache, "leaf")
+	assertIsNotDirty(t, innerLeaf.cache, "innerLeaf")
+}
+
+func TestAddInvalidatesCacheInnerLeaf(t *testing.T) {
+	val := "someValue"
+	key := []byte{0}
+	trie := buildTrie()
+	branch := trie.root.(*MerkleBranchNode)
+	innerBranch := branch.children[1].(*MerkleBranchNode)
+	otherLeaf := branch.children[2].(*MerkleLeafNode)
+	leaf := innerBranch.children[0].(*MerkleLeafNode)
+	innerLeaf := innerBranch.innerLeaf.(*MerkleLeafNode)
+
+	assert.Nil(t, trie.Add(key, val))
+	assertIsDirty(t, branch.cache, "branch")
+	assertIsNotDirty(t, innerBranch.cache, "innerBranch")
+	assertIsNotDirty(t, otherLeaf.cache, "otherLeaf")
+	assertIsNotDirty(t, leaf.cache, "leaf")
+	assertIsNotDirty(t, innerLeaf.cache, "innerLeaf")
 }
 
 // -----------------
