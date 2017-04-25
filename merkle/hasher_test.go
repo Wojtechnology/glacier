@@ -1,8 +1,6 @@
 package merkle
 
 import (
-	"golang.org/x/crypto/sha3"
-	"hash"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,14 +8,10 @@ import (
 	"github.com/wojtechnology/glacier/test"
 )
 
-func hashLeaf(n *MerkleLeafNode, h hash.Hash) []byte {
-	return hashObject(merkleLeafData{key: n.key, val: n.val}, h)
-}
-
 func nilSlice(size int) [][]byte {
 	s := make([][]byte, size)
 	for i := 0; i < size; i++ {
-		s[i] = nilHash
+		s[i] = hashNil()
 	}
 	return s
 }
@@ -30,13 +24,13 @@ func TestHash(t *testing.T) {
 	leaf := innerBranch.children[0].(*MerkleLeafNode)
 	innerLeaf := innerBranch.innerLeaf.(*MerkleLeafNode)
 
-	h := sha3.New256()
+	hasher := NewHasher()
 	var (
 		branchHash      []byte
 		innerBranchHash []byte
-		otherLeafHash   []byte = hashLeaf(otherLeaf, h)
-		leafHash        []byte = hashLeaf(leaf, h)
-		innerLeafHash   []byte = hashLeaf(innerLeaf, h)
+		otherLeafHash   []byte = hasher.hashLeaf(otherLeaf)
+		leafHash        []byte = hasher.hashLeaf(leaf)
+		innerLeafHash   []byte = hasher.hashLeaf(innerLeaf)
 	)
 
 	// Remove caches
@@ -50,14 +44,13 @@ func TestHash(t *testing.T) {
 	s := nilSlice(17)
 	s[0] = leafHash
 	s[16] = innerLeafHash
-	innerBranchHash = hashObject(s, h)
+	innerBranchHash = hashObject(s, hasher.hash)
 
 	s = nilSlice(17)
 	s[1] = innerBranchHash
 	s[2] = otherLeafHash
-	branchHash = hashObject(s, h)
+	branchHash = hashObject(s, hasher.hash)
 
-	hasher := NewHasher()
 	res, err := hasher.Hash(trie, trie.root)
 	assert.Nil(t, err)
 	test.AssertBytesEqual(t, branchHash, res)
@@ -83,10 +76,10 @@ func TestHashPartial(t *testing.T) {
 	leaf := innerBranch.children[0].(*MerkleLeafNode)
 	innerLeaf := innerBranch.innerLeaf.(*MerkleLeafNode)
 
-	h := sha3.New256()
+	hasher := NewHasher()
 	var (
 		innerBranchHash  []byte
-		leafHash         []byte = hashLeaf(leaf, h)
+		leafHash         []byte = hasher.hashLeaf(leaf)
 		innerLeafHash    []byte = []byte{4, 2}
 		hashNodeHash     []byte = []byte{9, 6}
 		innerBranch2Hash []byte = []byte{3, 7}
@@ -110,9 +103,8 @@ func TestHashPartial(t *testing.T) {
 	s[1] = hashNodeHash
 	s[2] = innerBranch2Hash
 	s[16] = innerLeafHash
-	innerBranchHash = hashObject(s, h)
+	innerBranchHash = hashObject(s, hasher.hash)
 
-	hasher := NewHasher()
 	res, err := hasher.Hash(trie, innerBranch)
 	assert.Nil(t, err)
 	test.AssertBytesEqual(t, innerBranchHash, res)

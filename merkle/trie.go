@@ -3,6 +3,7 @@ package merkle
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 )
 
 // Patricia hash trie
@@ -38,12 +39,35 @@ type HashCache struct {
 	hash  []byte
 }
 
+func printNode(n MerkleNode, tab string) {
+	switch tn := n.(type) {
+	case *MerkleLeafNode:
+		fmt.Printf("%sLeaf: %v (hash: %v)\n", tab, tn.key, tn.hash())
+	case *MerkleBranchNode:
+		fmt.Printf("%sBranch: %v (hash: %v)\n", tab, tn.keyPrefix, tn.hash())
+		for _, child := range tn.children {
+			printNode(child, tab+"\t")
+		}
+		printNode(tn.innerLeaf, tab+"\t")
+	case *MerkleHashNode:
+		fmt.Printf("%sHash: %v\n", tab, tn.hash)
+	case nil:
+		fmt.Printf("%sNil\n", tab)
+	default:
+		panic(fmt.Sprintf("Invalid node type: %T, %s", tn, tn))
+	}
+}
+
 func (n *MerkleLeafNode) Repr() []byte {
 	return n.key
 }
 
 func (n *MerkleLeafNode) Len() int {
 	return len(n.key)
+}
+
+func (l *MerkleLeafNode) Equals(r *MerkleLeafNode) bool {
+	return bytes.Equal(l.key, r.key) && reflect.DeepEqual(l.val, r.val)
 }
 
 func (n *MerkleLeafNode) hash() []byte {
@@ -72,8 +96,12 @@ func (n *MerkleBranchNode) child(key []byte) MerkleNode {
 	return n.children[key[n.Len()]]
 }
 
-// Return whether the child was set (might not be if already exists)
 func (n *MerkleBranchNode) setChild(node MerkleNode) {
+	_, isBranch := node.(*MerkleBranchNode)
+	_, isLeaf := node.(*MerkleLeafNode)
+	if !(isBranch || isLeaf) {
+		panic(fmt.Sprintf("Invalid node type for setChild: %T, %s", n, n))
+	}
 	n.children[node.Repr()[n.Len()]] = node
 	if n.cache != nil {
 		n.cache.dirty = true

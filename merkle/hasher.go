@@ -22,8 +22,6 @@ type merkleLeafData struct {
 	val interface{}
 }
 
-var nilHash []byte = []byte{78, 73, 76}
-
 // Hashes the passed in node that exists in the given trie, returns the hash
 func (h *Hasher) Hash(t *MerkleTrie, n MerkleNode) ([]byte, error) {
 	var hash []byte
@@ -35,8 +33,7 @@ func (h *Hasher) Hash(t *MerkleTrie, n MerkleNode) ([]byte, error) {
 			return hash, nil
 		}
 
-		data := merkleLeafData{key: tn.key, val: tn.val}
-		hash := hashObject(data, h.hash)
+		hash := h.hashLeaf(tn)
 		tn.setHash(hash)
 		return hash, nil
 	case *MerkleBranchNode:
@@ -64,10 +61,43 @@ func (h *Hasher) Hash(t *MerkleTrie, n MerkleNode) ([]byte, error) {
 	case *MerkleHashNode:
 		return tn.hash, nil
 	case nil:
-		return nilHash, nil
+		return hashNil(), nil
 	default:
 		panic(fmt.Sprintf("Invalid node type: %T, %s", tn, tn))
 	}
+}
+
+func (h *Hasher) hashLeaf(n *MerkleLeafNode) []byte {
+	return hashObject(merkleLeafData{key: n.key, val: n.val}, h.hash)
+}
+
+func (h *Hasher) hashBranch(n *MerkleBranchNode) []byte {
+	childHashes := make([][]byte, 17)
+	for i, child := range n.children {
+		childHashes[i] = h.hashNode(child)
+	}
+	childHashes[16] = h.hashNode(n.innerLeaf)
+	return hashObject(childHashes, h.hash)
+}
+
+func (h *Hasher) hashNode(n MerkleNode) []byte {
+	// TODO: write separate test
+	switch tn := n.(type) {
+	case *MerkleLeafNode:
+		return h.hashLeaf(tn)
+	case *MerkleBranchNode:
+		return h.hashBranch(tn)
+	case *MerkleHashNode:
+		return tn.hash
+	case nil:
+		return hashNil()
+	default:
+		panic(fmt.Sprintf("Invalid node type: %T, %s", tn, tn))
+	}
+}
+
+func hashNil() []byte {
+	return []byte{78, 73, 76}
 }
 
 func hashObject(o interface{}, h hash.Hash) []byte {
