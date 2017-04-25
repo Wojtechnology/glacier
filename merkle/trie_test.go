@@ -3,6 +3,8 @@ package merkle
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/wojtechnology/glacier/test"
 )
 
@@ -77,9 +79,16 @@ func TestContainsLeaf(t *testing.T) {
 	test.AssertEqual(t, true, trie.Contains([]byte{0, 16, 2, 3, 4}))
 }
 
-func TestDoesNotContainLong(t *testing.T) {
+// Longer than leaf
+func TestDoesNotContainLong1(t *testing.T) {
 	trie := buildTrie()
 	test.AssertEqual(t, false, trie.Contains([]byte{0, 16, 2, 3, 4, 5}))
+}
+
+// Longer than branch
+func TestDoesNotContainLong2(t *testing.T) {
+	trie := buildTrie()
+	test.AssertEqual(t, false, trie.Contains([]byte{0, 16, 2, 16}))
 }
 
 func TestDoesNotContainMissingChild(t *testing.T) {
@@ -113,7 +122,7 @@ func TestAddToEmpty(t *testing.T) {
 	key := []byte{1}
 	val := "someValue"
 
-	test.AssertEqual(t, true, trie.Add(key, val))
+	assert.Nil(t, trie.Add(key, val))
 	test.AssertEqual(t, val, trie.Get(key))
 }
 
@@ -124,8 +133,8 @@ func TestAddBranchToEmpty(t *testing.T) {
 	key2 := []byte{1, 4}
 	val2 := "someValue2"
 
-	test.AssertEqual(t, true, trie.Add(key1, val1))
-	test.AssertEqual(t, true, trie.Add(key2, val2))
+	assert.Nil(t, trie.Add(key1, val1))
+	assert.Nil(t, trie.Add(key2, val2))
 	test.AssertEqual(t, val1, trie.Get(key1))
 	test.AssertEqual(t, val2, trie.Get(key2))
 }
@@ -137,15 +146,15 @@ func TestAddEmptyBranchToEmpty(t *testing.T) {
 	key2 := []byte{16}
 	val2 := "someValue2"
 
-	test.AssertEqual(t, true, trie.Add(key1, val1))
-	test.AssertEqual(t, true, trie.Add(key2, val2))
+	assert.Nil(t, trie.Add(key1, val1))
+	assert.Nil(t, trie.Add(key2, val2))
 	test.AssertEqual(t, val1, trie.Get(key1))
 	test.AssertEqual(t, val2, trie.Get(key2))
 }
 
 func testAddAndGet(t *testing.T, trie *MerkleTrie, key []byte) {
 	val := "someValue"
-	test.AssertEqual(t, true, trie.Add(key, val))
+	assert.Nil(t, trie.Add(key, val))
 	test.AssertEqual(t, val, trie.Get(key))
 }
 
@@ -173,7 +182,9 @@ func TestAddToExistingBranch(t *testing.T) {
 
 func testAddAlreadyExists(t *testing.T, trie *MerkleTrie, key []byte) {
 	val := "someValue"
-	test.AssertEqual(t, false, trie.Add(key, val))
+	err := trie.Add(key, val)
+	assert.NotNil(t, err)
+	assert.IsType(t, AlreadyExistsError{}, err)
 }
 
 func TestAddAlreadyExistsRootLeaf(t *testing.T) {
