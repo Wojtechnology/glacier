@@ -17,7 +17,10 @@ func TestBuildProofNonExistent1(t *testing.T) {
 		val: leaf.val,
 	}
 
-	assert.Nil(t, BuildProof(trie, missingLeaf))
+	proof, err := BuildProof(trie, missingLeaf)
+	assert.NotNil(t, err)
+	assert.IsType(t, NotFoundError{}, err)
+	assert.Nil(t, proof)
 }
 
 // Invalid val when trying to match with leaf
@@ -31,7 +34,10 @@ func TestBuildProofNonExistent2(t *testing.T) {
 		val: "someValueThatMustBeDifferent",
 	}
 
-	assert.Nil(t, BuildProof(trie, missingLeaf))
+	proof, err := BuildProof(trie, missingLeaf)
+	assert.NotNil(t, err)
+	assert.IsType(t, NotFoundError{}, err)
+	assert.Nil(t, proof)
 }
 
 // Reach nil
@@ -42,7 +48,10 @@ func TestBuildProofNonExistent3(t *testing.T) {
 		val: "someValue",
 	}
 
-	assert.Nil(t, BuildProof(trie, missingLeaf))
+	proof, err := BuildProof(trie, missingLeaf)
+	assert.NotNil(t, err)
+	assert.IsType(t, NotFoundError{}, err)
+	assert.Nil(t, proof)
 }
 
 // In between branches
@@ -53,7 +62,10 @@ func TestBuildProofNonExistent4(t *testing.T) {
 		val: "someValue",
 	}
 
-	assert.Nil(t, BuildProof(trie, missingLeaf))
+	proof, err := BuildProof(trie, missingLeaf)
+	assert.NotNil(t, err)
+	assert.IsType(t, NotFoundError{}, err)
+	assert.Nil(t, proof)
 }
 
 // Invalid val in inner leaf
@@ -67,7 +79,10 @@ func TestBuildProofNonExistent5(t *testing.T) {
 		val: "someValueThatMustBeDifferent",
 	}
 
-	assert.Nil(t, BuildProof(trie, missingLeaf))
+	proof, err := BuildProof(trie, missingLeaf)
+	assert.NotNil(t, err)
+	assert.IsType(t, NotFoundError{}, err)
+	assert.Nil(t, proof)
 }
 
 func TestProve(t *testing.T) {
@@ -76,8 +91,9 @@ func TestProve(t *testing.T) {
 	innerBranch := branch.children[1].(*MerkleBranchNode)
 	leaf := innerBranch.children[0].(*MerkleLeafNode)
 
-	hash, _ := NewHasher().Hash(trie, trie.root)
-	proof := BuildProof(trie, leaf)
+	hash := NewHasher().hash(trie.root)
+	proof, err := BuildProof(trie, leaf)
+	assert.Nil(t, err)
 	assert.True(t, VerifyProof(hash, leaf, proof))
 }
 
@@ -87,12 +103,13 @@ func TestProveInnerLeaf(t *testing.T) {
 	innerBranch := branch.children[1].(*MerkleBranchNode)
 	innerLeaf := innerBranch.innerLeaf.(*MerkleLeafNode)
 
-	hash, _ := NewHasher().Hash(trie, trie.root)
-	proof := BuildProof(trie, innerLeaf)
+	hash := NewHasher().hash(trie.root)
+	proof, err := BuildProof(trie, innerLeaf)
+	assert.Nil(t, err)
 	assert.True(t, VerifyProof(hash, innerLeaf, proof))
 }
 
-func TestProveInvalidLeaf(t *testing.T) {
+func TestProveInvalidPath(t *testing.T) {
 	trie := buildTrie()
 	branch := trie.root.(*MerkleBranchNode)
 	innerBranch := branch.children[1].(*MerkleBranchNode)
@@ -102,22 +119,37 @@ func TestProveInvalidLeaf(t *testing.T) {
 		val: "someValue",
 	}
 
-	hash, _ := NewHasher().Hash(trie, trie.root)
-	proof := BuildProof(trie, leaf)
+	hash := NewHasher().hash(trie.root)
+	proof, err := BuildProof(trie, leaf)
+	assert.Nil(t, err)
 	assert.False(t, VerifyProof(hash, invalidLeaf, proof))
 }
 
-func TestProveInvalidInnerLeaf(t *testing.T) {
+func TestProveInvalidBranchHash(t *testing.T) {
+	trie := buildTrie()
+	branch := trie.root.(*MerkleBranchNode)
+	innerBranch := branch.children[1].(*MerkleBranchNode)
+	leaf := innerBranch.children[0].(*MerkleLeafNode)
+
+	hash := NewHasher().hash(trie.root)
+	proof, err := BuildProof(trie, leaf)
+	assert.Nil(t, err)
+	proof[0].children[1] = &MerkleHashNode{hash: []byte{4, 2}}
+	assert.False(t, VerifyProof(hash, leaf, proof))
+}
+
+func TestProveInvalidLeafHash(t *testing.T) {
 	trie := buildTrie()
 	branch := trie.root.(*MerkleBranchNode)
 	innerBranch := branch.children[1].(*MerkleBranchNode)
 	leaf := innerBranch.children[0].(*MerkleLeafNode)
 	invalidLeaf := &MerkleLeafNode{
-		key: []byte{0, 0, 1, 0},
-		val: "someValue",
+		key: leaf.key,
+		val: "someValueThatMustBeDifferentThanLeaf",
 	}
 
-	hash, _ := NewHasher().Hash(trie, trie.root)
-	proof := BuildProof(trie, leaf)
+	hash := NewHasher().hash(trie.root)
+	proof, err := BuildProof(trie, leaf)
+	assert.Nil(t, err)
 	assert.False(t, VerifyProof(hash, invalidLeaf, proof))
 }

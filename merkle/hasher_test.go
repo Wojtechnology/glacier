@@ -44,15 +44,14 @@ func TestHash(t *testing.T) {
 	s := nilSlice(17)
 	s[0] = leafHash
 	s[16] = innerLeafHash
-	innerBranchHash = hashObject(s, hasher.hash)
+	innerBranchHash = hashObject(s, hasher.sha)
 
 	s = nilSlice(17)
 	s[1] = innerBranchHash
 	s[2] = otherLeafHash
-	branchHash = hashObject(s, hasher.hash)
+	branchHash = hashObject(s, hasher.sha)
 
-	res, err := hasher.Hash(trie, trie.root)
-	assert.Nil(t, err)
+	res := hasher.hash(trie.root)
 	test.AssertBytesEqual(t, branchHash, res)
 
 	test.AssertBytesEqual(t, leafHash, leaf.hash())
@@ -103,10 +102,9 @@ func TestHashPartial(t *testing.T) {
 	s[1] = hashNodeHash
 	s[2] = innerBranch2Hash
 	s[16] = innerLeafHash
-	innerBranchHash = hashObject(s, hasher.hash)
+	innerBranchHash = hashObject(s, hasher.sha)
 
-	res, err := hasher.Hash(trie, innerBranch)
-	assert.Nil(t, err)
+	res := hasher.hash(innerBranch)
 	test.AssertBytesEqual(t, innerBranchHash, res)
 
 	test.AssertBytesEqual(t, leafHash, leaf.hash())

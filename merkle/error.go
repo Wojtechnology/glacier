@@ -11,6 +11,14 @@ func (e AlreadyExistsError) Error() string {
 	return fmt.Sprintf("Key \"%s\" already exists in node %s\n", hexToAscii(e.Key), e.Node)
 }
 
+type NotFoundError struct {
+	Key []byte
+}
+
+func (e NotFoundError) Error() string {
+	return fmt.Sprintf("Key \"%s\" does not exist in trie\n", e.Key)
+}
+
 func hexToAscii(s []byte) []byte {
 	newS := make([]byte, len(s))
 	for i, elem := range s {

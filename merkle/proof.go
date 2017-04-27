@@ -6,113 +6,73 @@ import (
 )
 
 // Returns proof that a key exists within the trie
-func BuildProof(t *MerkleTrie, target *MerkleLeafNode) MerkleNode {
-	return buildProofInner(t, t.root, target, NewHasher())
-}
+func BuildProof(t *MerkleTrie, target *MerkleLeafNode) ([]*MerkleBranchNode, error) {
+	var (
+		n      = t.root
+		proof  = make([]*MerkleBranchNode, 0)
+		hasher = NewHasher()
+		found  = false
+	)
 
-func buildProofInner(t *MerkleTrie, n MerkleNode, target *MerkleLeafNode,
-	hasher *Hasher) MerkleNode {
-	n, err := t.maybeResolveNode(n)
-	if err != nil {
-		// TODO: Log
-		return nil
-	}
-
-	switch tn := n.(type) {
-	case *MerkleLeafNode:
-		if !target.Equals(tn) {
-			// target does not exist in trie
-			return nil
-		}
-		hash, err := hasher.Hash(t, tn)
+	for !found {
+		var err error
+		n, err = t.maybeResolveNode(n)
 		if err != nil {
-			// TODO: Log
-			return nil
-		}
-		return &MerkleHashNode{hash: hash}
-	case *MerkleBranchNode:
-		branch := &MerkleBranchNode{
-			keyPrefix: tn.keyPrefix,
-		}
-		if bytes.Equal(target.key, tn.keyPrefix) {
-			child := buildProofInner(t, tn.innerLeaf, target, hasher)
-			if child == nil {
-				return nil
-			}
-			branch.innerLeaf = child
-		} else if len(longestCommonPrefix(target.key, tn.keyPrefix)) == tn.Len() {
-			child := buildProofInner(t, tn.child(target.key), target, hasher)
-			if child == nil {
-				return nil
-			}
-			branch.children[target.key[branch.Len()]] = child
-		} else {
-			// len(longestCommonPrefix(target.key, tn.keyPrefix)) < tn.Len()
-			// target does not exist in trie
-			return nil
+			return nil, err
 		}
 
-		// Replace children not on main path with MerkleHashNode's
-		for i, elem := range branch.children {
-			if elem == nil {
-				hash, err := hasher.Hash(t, tn.children[i])
-				if err != nil {
-					// TODO: Log
-					return nil
-				}
-				branch.children[i] = &MerkleHashNode{hash: hash}
+		switch tn := n.(type) {
+		case *MerkleLeafNode:
+			if !target.Equals(tn) {
+				// TODO: Prehaps only require key equality
+				return nil, NotFoundError{Key: target.key}
 			}
-		}
-
-		// Replace innerLeaf if not on main path with MerkleHashNode
-		if branch.innerLeaf == nil {
-			hash, err := hasher.Hash(t, tn.innerLeaf)
-			if err != nil {
-				// TODO: Log
-				return nil
+			found = true
+		case *MerkleBranchNode:
+			proof = append(proof, tn)
+			if bytes.Equal(target.key, tn.keyPrefix) {
+				n = tn.innerLeaf
+			} else if len(longestCommonPrefix(target.key, tn.keyPrefix)) == tn.Len() {
+				n = tn.child(target.key)
+			} else {
+				return nil, NotFoundError{Key: target.key}
 			}
-			branch.innerLeaf = &MerkleHashNode{hash: hash}
+		case nil:
+			return nil, NotFoundError{Key: target.key}
+		default:
+			panic(fmt.Sprintf("Invalid node type: %T, %s", tn, tn))
 		}
-
-		hash, err := hasher.Hash(t, tn)
-		if err != nil {
-			// TODO: Log
-			return nil
-		}
-		branch.setHash(hash)
-		return branch
-	case nil:
-		// target does not exist in trie
-		return nil
-	default:
-		panic(fmt.Sprintf("Invalid node type: %T, %s", tn, tn))
 	}
 
-}
-
-func VerifyProof(hash []byte, target *MerkleLeafNode, proof MerkleNode) bool {
-	proof = replaceLeaf(target, proof)
-	return bytes.Equal(NewHasher().hashNode(proof), hash)
-}
-
-func replaceLeaf(leaf *MerkleLeafNode, proof MerkleNode) MerkleNode {
-	switch tProof := proof.(type) {
-	case *MerkleHashNode:
-		return leaf
-	case *MerkleBranchNode:
-		if bytes.Equal(leaf.key, tProof.keyPrefix) {
-			tProof.innerLeaf = replaceLeaf(leaf, tProof.innerLeaf)
-		} else if len(longestCommonPrefix(leaf.key, tProof.keyPrefix)) == tProof.Len() {
-			child := replaceLeaf(leaf, tProof.child(leaf.key))
-			if child == nil {
-				return nil
-			}
-			tProof.setChild(child)
-		} else {
-			return nil
-		}
-		return tProof
-	default:
-		panic(fmt.Sprintf("Invalid node type: %T, %s", tProof, tProof))
+	for i, branch := range proof {
+		proof[i] = hasher.hashChildren(branch)
 	}
+
+	return proof, nil
+}
+
+func VerifyProof(hash []byte, target *MerkleLeafNode, proof []*MerkleBranchNode) bool {
+	hasher := NewHasher()
+
+	for _, branch := range proof {
+		if !bytes.Equal(hash, hasher.hash(branch)) {
+			return false
+		}
+
+		var child MerkleNode
+		if bytes.Equal(target.key, branch.keyPrefix) {
+			child = branch.innerLeaf
+		} else if len(longestCommonPrefix(target.key, branch.keyPrefix)) == branch.Len() {
+			child = branch.child(target.key)
+		} else {
+			return false // The given proof path is invalid
+		}
+
+		hash = hasher.hash(child)
+	}
+
+	if !bytes.Equal(hash, hasher.hash(target)) {
+		return false
+	}
+	return true
 }
