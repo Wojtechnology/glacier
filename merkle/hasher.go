@@ -83,7 +83,7 @@ func hashNil() []byte {
 
 func hashObject(o interface{}, h hash.Hash) []byte {
 	defer h.Reset()
-	hash := make([]byte, 32)
+	hash := make([]byte, h.Size())
 	rlp.Encode(h, o)
 	h.Sum(hash[:0])
 	return hash

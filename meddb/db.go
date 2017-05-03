@@ -1,15 +1,13 @@
 package meddb
 
-import (
-	"errors"
-	"sync"
-)
+import "sync"
 
 type Database interface {
 	Get([]byte) ([]byte, error)
 	Put([]byte, []byte) error
 	Contains([]byte) (bool, error)
 	Commit() error
+	Delete([]byte) error
 }
 
 type MemoryDatabase struct {
@@ -42,7 +40,7 @@ func (db *MemoryDatabase) Get(key []byte) ([]byte, error) {
 	if value, ok := db.db[string(key)]; ok {
 		return value, nil
 	}
-	return nil, errors.New("value not found for key " + string(key))
+	return nil, NotFoundError{Key: key}
 }
 
 // Returns whether the database contains the key
@@ -55,5 +53,17 @@ func (db *MemoryDatabase) Contains(key []byte) (bool, error) {
 }
 
 func (db *MemoryDatabase) Commit() error {
+	return nil
+}
+
+// Delete the key from the database. Returns NotFoundError if the key does not exist.
+func (db *MemoryDatabase) Delete(key []byte) error {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	if _, ok := db.db[string(key)]; !ok {
+		return NotFoundError{Key: key}
+	}
+	delete(db.db, string(key))
 	return nil
 }

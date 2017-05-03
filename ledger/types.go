@@ -3,6 +3,8 @@ package ledger
 import (
 	"encoding/binary"
 	"math/big"
+
+	"github.com/wojtechnology/glacier/crypto"
 )
 
 const (
@@ -86,6 +88,12 @@ func (address *Address) SetBytes(b []byte) {
 		b = b[len(b)-AddressLength:]
 	}
 	copy(address[AddressLength-len(b):], b)
+}
+
+// Uses HASH160 (SHA256 + RIPEMD160) to generate the address from given public key
+// Makes no assumption about whether this is a compressed or uncompressed public key
+func AddressFromPubKey(pub []byte) Address {
+	return crypto.Hash160(pub)
 }
 
 /*

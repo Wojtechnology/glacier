@@ -5,6 +5,8 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"golang.org/x/crypto/ripemd160"
+	"golang.org/x/crypto/sha3"
 	"math/big"
 )
 
@@ -31,4 +33,22 @@ func SerializePrivateKey(priv *ecdsa.PrivateKey) ([]byte, error) {
 
 func SerializePublicKey(pub *ecdsa.PublicKey) ([]byte, error) {
 	return x509.MarshalPKIXPublicKey(pub)
+}
+
+// SHA256 + RIPEMD160
+func Hash160(s []byte) [20]byte {
+	sha := sha3.New256()
+	rip := ripemd160.New()
+
+	var (
+		hashed []byte = make([]byte, sha.Size())
+		res    [20]byte
+	)
+	sha.Write(s)
+	sha.Sum(hashed[:0])
+	rip.Write(hashed)
+	rip.Sum(res[:0])
+
+	return res
+
 }

@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/wojtechnology/glacier/meddb"
 	"github.com/wojtechnology/glacier/test"
 )
@@ -18,12 +20,12 @@ func TestWriteReadBlockHeader(t *testing.T) {
 	db, _ := meddb.NewMemoryDatabase()
 
 	err := h.Write(db)
-	test.AssertEqual(t, nil, err)
+	assert.Nil(t, err)
 
 	var newH *BlockHeader
 	newH, err = GetBlockHeader(db, h.Hash(), h.Number.Uint64())
 
-	test.AssertEqual(t, nil, err)
+	assert.Nil(t, err)
 	test.AssertEqual(t, h, newH)
 }
 
@@ -37,12 +39,12 @@ func TestWriteReadHeadBlockHeader(t *testing.T) {
 	db, _ := meddb.NewMemoryDatabase()
 
 	err := h.Write(db)
-	test.AssertEqual(t, nil, err)
+	assert.Nil(t, err)
 
 	var newH *BlockHeader
 	newH, err = GetBlockHeader(db, h.Hash(), h.Number.Uint64())
 
-	test.AssertEqual(t, nil, err)
+	assert.Nil(t, err)
 	test.AssertEqual(t, h, newH)
 }
 
@@ -55,11 +57,11 @@ func TestWriteReadBlockBody(t *testing.T) {
 	var number uint64 = 42
 
 	err := b.Write(db, hash, number)
-	test.AssertEqual(t, nil, err)
+	assert.Nil(t, err)
 
 	var newB *BlockBody
 	newB, err = GetBlockBody(db, hash, number)
 
-	test.AssertEqual(t, nil, err)
+	assert.Nil(t, err)
 	test.AssertEqual(t, *b.Transactions[0], *newB.Transactions[0])
 }
