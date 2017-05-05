@@ -6,11 +6,12 @@ import (
 
 	"github.com/ethereum/go-ethereum/rlp"
 
+	"github.com/wojtechnology/glacier/crypto"
 	"github.com/wojtechnology/glacier/meddb"
 )
 
 type TxInput struct {
-	Source *TxOutput
+	Source *TxOutput // Maybe store this as a hash instead
 }
 
 type TxOutput struct {
@@ -36,6 +37,8 @@ func buildUnspentTxOutputsKey(hash Hash) []byte {
 
 // ------------
 // TxOutput API
+// TODO(FUTURE): Make outputs have lock scripts that are unlocked by input scripts.
+//               Similar to Bitcoin, will allow for more complex constraints on outputs.
 // ------------
 
 func (o *TxOutput) Hash() Hash {
@@ -67,4 +70,21 @@ func GetUnspentTxOutput(db meddb.Database, hash Hash) (*TxOutput, error) {
 		return nil, err
 	}
 	return o, nil
+}
+
+// ---------------
+// Transaction API
+// ---------------
+
+type TransactionBody struct {
+	Inputs  []*TxInput
+	Outputs []*TxOutput
+}
+
+// Returns true if signature of transaction t is valid on public key of output o, with a hash
+// generated from the inputs and outputs of t.
+func (t *Transaction) validateSignature(o *TxOutput) bool {
+	data := &TransactionBody{Inputs: t.Inputs, Outputs: t.Outputs}
+	hash := rlpHash(data)
+	return crypto.Verify(hash[:], o.PubKey, t.R, t.S)
 }

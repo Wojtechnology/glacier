@@ -234,7 +234,7 @@ func (t *MerkleTrie) addInner(n MerkleNode, prevBranch *MerkleBranchNode, key []
 	case *MerkleLeafNode:
 		if bytes.Equal(key, tn.key) {
 			// TODO: return error here
-			return AlreadyExistsError{Key: key, Node: n}
+			return &AlreadyExistsError{Key: key, Node: n}
 		}
 		t.forkNode(tn, prevBranch, key, val)
 		return nil
@@ -247,7 +247,7 @@ func (t *MerkleTrie) addInner(n MerkleNode, prevBranch *MerkleBranchNode, key []
 
 			switch tInner := inner.(type) {
 			case *MerkleLeafNode:
-				return AlreadyExistsError{Key: key, Node: n}
+				return &AlreadyExistsError{Key: key, Node: n}
 			case nil:
 				tn.innerLeaf = &MerkleLeafNode{key: key, val: val}
 				if tn.cache != nil {

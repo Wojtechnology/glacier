@@ -19,7 +19,7 @@ func TestBuildProofNonExistent1(t *testing.T) {
 
 	proof, err := BuildProof(trie, missingLeaf)
 	assert.NotNil(t, err)
-	assert.IsType(t, NotFoundError{}, err)
+	assert.IsType(t, &NotFoundError{}, err)
 	assert.Nil(t, proof)
 }
 
@@ -36,7 +36,7 @@ func TestBuildProofNonExistent2(t *testing.T) {
 
 	proof, err := BuildProof(trie, missingLeaf)
 	assert.NotNil(t, err)
-	assert.IsType(t, NotFoundError{}, err)
+	assert.IsType(t, &NotFoundError{}, err)
 	assert.Nil(t, proof)
 }
 
@@ -50,7 +50,7 @@ func TestBuildProofNonExistent3(t *testing.T) {
 
 	proof, err := BuildProof(trie, missingLeaf)
 	assert.NotNil(t, err)
-	assert.IsType(t, NotFoundError{}, err)
+	assert.IsType(t, &NotFoundError{}, err)
 	assert.Nil(t, proof)
 }
 
@@ -64,7 +64,7 @@ func TestBuildProofNonExistent4(t *testing.T) {
 
 	proof, err := BuildProof(trie, missingLeaf)
 	assert.NotNil(t, err)
-	assert.IsType(t, NotFoundError{}, err)
+	assert.IsType(t, &NotFoundError{}, err)
 	assert.Nil(t, proof)
 }
 
@@ -81,7 +81,7 @@ func TestBuildProofNonExistent5(t *testing.T) {
 
 	proof, err := BuildProof(trie, missingLeaf)
 	assert.NotNil(t, err)
-	assert.IsType(t, NotFoundError{}, err)
+	assert.IsType(t, &NotFoundError{}, err)
 	assert.Nil(t, proof)
 }
 

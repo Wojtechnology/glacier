@@ -160,6 +160,15 @@ func (b *Block) WriteHead(db meddb.Database) error {
 	return nil
 }
 
+// Adds transaction to block body
+func (b *Block) AddTransaction(t *Transaction) error {
+	if b.Body == nil {
+		return &MissingBodyError{B: b}
+	}
+	b.Body.Transactions = append(b.Body.Transactions, t)
+	return nil
+}
+
 // Gets whole block from database
 func GetBlock(db meddb.Database, hash Hash, number uint64) (*Block, error) {
 	header, err := GetBlockHeader(db, hash, number)

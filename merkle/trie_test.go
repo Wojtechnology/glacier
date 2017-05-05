@@ -201,7 +201,7 @@ func testAddAlreadyExists(t *testing.T, trie *MerkleTrie, key []byte) {
 	val := "someValue"
 	err := trie.Add(key, val)
 	assert.NotNil(t, err)
-	assert.IsType(t, AlreadyExistsError{}, err)
+	assert.IsType(t, &AlreadyExistsError{}, err)
 }
 
 func TestAddAlreadyExistsRootLeaf(t *testing.T) {

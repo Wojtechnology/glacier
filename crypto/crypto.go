@@ -5,6 +5,8 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"errors"
+	"fmt"
 	"golang.org/x/crypto/ripemd160"
 	"golang.org/x/crypto/sha3"
 	"math/big"
@@ -23,16 +25,35 @@ func Sign(hash []byte, priv *ecdsa.PrivateKey) (r, s *big.Int, err error) {
 	return r, s, nil
 }
 
-func Verify(hash []byte, pub *ecdsa.PublicKey, r, s *big.Int) (result bool) {
-	return ecdsa.Verify(pub, hash, r, s)
+func Verify(hash, pub []byte, r, s *big.Int) (result bool) {
+	pubKey, err := ParsePublicKey(pub)
+	if err != nil {
+		return false
+	}
+	return ecdsa.Verify(pubKey, hash, r, s)
 }
 
-func SerializePrivateKey(priv *ecdsa.PrivateKey) ([]byte, error) {
+func MarshalPrivateKey(priv *ecdsa.PrivateKey) ([]byte, error) {
 	return x509.MarshalECPrivateKey(priv)
 }
 
-func SerializePublicKey(pub *ecdsa.PublicKey) ([]byte, error) {
+func MarshalPublicKey(pub *ecdsa.PublicKey) ([]byte, error) {
 	return x509.MarshalPKIXPublicKey(pub)
+}
+
+func ParsePrivateKey(priv []byte) (*ecdsa.PrivateKey, error) {
+	return x509.ParseECPrivateKey(priv)
+}
+
+func ParsePublicKey(pub []byte) (*ecdsa.PublicKey, error) {
+	pubKey, err := x509.ParsePKIXPublicKey(pub)
+	if err != nil {
+		return nil, err
+	}
+	if pubKey, ok := pubKey.(*ecdsa.PublicKey); ok {
+		return pubKey, nil
+	}
+	return nil, errors.New(fmt.Sprintf("Invalid type \"%T\" of public key \"%v\"\n", pubKey, pub))
 }
 
 // SHA256 + RIPEMD160
@@ -50,5 +71,4 @@ func Hash160(s []byte) [20]byte {
 	rip.Sum(res[:0])
 
 	return res
-
 }

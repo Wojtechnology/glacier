@@ -50,7 +50,8 @@ func TestWriteReadHeadBlockHeader(t *testing.T) {
 
 func TestWriteReadBlockBody(t *testing.T) {
 	b := new(BlockBody)
-	trans := &Transaction{V: big.NewInt(42), R: big.NewInt(43), S: big.NewInt(44)}
+	trans := &Transaction{V: big.NewInt(42), R: big.NewInt(43), S: big.NewInt(44),
+		Inputs: make([]*TxInput, 0), Outputs: make([]*TxOutput, 0)}
 	b.Transactions = append(b.Transactions, trans)
 	db, _ := meddb.NewMemoryDatabase()
 	hash := StringToHash("some hash")

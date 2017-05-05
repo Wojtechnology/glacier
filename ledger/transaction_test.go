@@ -61,5 +61,5 @@ func TestDeleteUnspentTxOutputDoesNotExist(t *testing.T) {
 	db, _ := meddb.NewMemoryDatabase()
 
 	err := o.DeleteUnspent(db)
-	assert.IsType(t, meddb.NotFoundError{}, err)
+	assert.IsType(t, &meddb.NotFoundError{}, err)
 }

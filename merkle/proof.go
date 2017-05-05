@@ -25,7 +25,7 @@ func BuildProof(t *MerkleTrie, target *MerkleLeafNode) ([]*MerkleBranchNode, err
 		case *MerkleLeafNode:
 			if !target.Equals(tn) {
 				// TODO: Prehaps only require key equality
-				return nil, NotFoundError{Key: target.key}
+				return nil, &NotFoundError{Key: target.key}
 			}
 			found = true
 		case *MerkleBranchNode:
@@ -35,10 +35,10 @@ func BuildProof(t *MerkleTrie, target *MerkleLeafNode) ([]*MerkleBranchNode, err
 			} else if len(longestCommonPrefix(target.key, tn.keyPrefix)) == tn.Len() {
 				n = tn.child(target.key)
 			} else {
-				return nil, NotFoundError{Key: target.key}
+				return nil, &NotFoundError{Key: target.key}
 			}
 		case nil:
-			return nil, NotFoundError{Key: target.key}
+			return nil, &NotFoundError{Key: target.key}
 		default:
 			panic(fmt.Sprintf("Invalid node type: %T, %s", tn, tn))
 		}

@@ -7,7 +7,7 @@ type AlreadyExistsError struct {
 	Node MerkleNode
 }
 
-func (e AlreadyExistsError) Error() string {
+func (e *AlreadyExistsError) Error() string {
 	return fmt.Sprintf("Key \"%s\" already exists in node %s\n", hexToAscii(e.Key), e.Node)
 }
 
@@ -15,7 +15,7 @@ type NotFoundError struct {
 	Key []byte
 }
 
-func (e NotFoundError) Error() string {
+func (e *NotFoundError) Error() string {
 	return fmt.Sprintf("Key \"%s\" does not exist in trie\n", e.Key)
 }
 

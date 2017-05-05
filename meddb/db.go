@@ -40,7 +40,7 @@ func (db *MemoryDatabase) Get(key []byte) ([]byte, error) {
 	if value, ok := db.db[string(key)]; ok {
 		return value, nil
 	}
-	return nil, NotFoundError{Key: key}
+	return nil, &NotFoundError{Key: key}
 }
 
 // Returns whether the database contains the key
@@ -62,7 +62,7 @@ func (db *MemoryDatabase) Delete(key []byte) error {
 	defer db.lock.Unlock()
 
 	if _, ok := db.db[string(key)]; !ok {
-		return NotFoundError{Key: key}
+		return &NotFoundError{Key: key}
 	}
 	delete(db.db, string(key))
 	return nil
