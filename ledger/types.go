@@ -13,9 +13,10 @@ const (
 )
 
 type (
-	Hash       [HashLength]byte
-	Address    [AddressLength]byte
-	BlockNonce [8]byte
+	Hash         [HashLength]byte
+	Address      [AddressLength]byte
+	BlockNonce   [8]byte
+	AccountNonce BlockNonce
 )
 
 /*

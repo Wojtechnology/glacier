@@ -24,12 +24,3 @@ type MissingBodyError struct {
 func (e *MissingBodyError) Error() string {
 	return fmt.Sprintf("Block \"%v\" is missing its body\n", e.B)
 }
-
-type InvalidSignatureError struct {
-	T *Transaction
-	O *TxOutput
-}
-
-func (e *InvalidSignatureError) Error() string {
-	return fmt.Sprintf("Invalid signature on transaction \"%v\" with output \"%v\"\n", e.T, e.O)
-}
