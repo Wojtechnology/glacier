@@ -4,56 +4,71 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"golang.org/x/crypto/ripemd160"
 	"golang.org/x/crypto/sha3"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
 
-func CreateKey() (priv *ecdsa.PrivateKey, err error) {
-	return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+func S256() elliptic.Curve {
+	return secp256k1.S256()
 }
 
-func Sign(hash []byte, priv *ecdsa.PrivateKey) (r, s *big.Int, err error) {
-	zero := big.NewInt(0)
-	r, s, err = ecdsa.Sign(rand.Reader, priv, hash)
-	if err != nil {
-		return zero, zero, err
+func NewPrivateKey() (priv *ecdsa.PrivateKey, err error) {
+	return ecdsa.GenerateKey(S256(), rand.Reader)
+}
+
+// Retrieves public key from signature used to sign hash
+func RetrievePublicKey(hash, sig []byte) ([]byte, error) {
+	return secp256k1.RecoverPubkey(hash, sig)
+}
+
+// Signs hash using given private key. Returns signature
+func Sign(hash []byte, priv *ecdsa.PrivateKey) (sig []byte, err error) {
+	if len(hash) != 32 {
+		return nil, errors.New(fmt.Sprintf("Hash \"%v\" should be of length 32", hash))
 	}
-	return r, s, nil
+	return secp256k1.Sign(hash, priv.D.Bytes())
 }
 
-func Verify(hash, pub []byte, r, s *big.Int) (result bool) {
-	pubKey, err := ParsePublicKey(pub)
-	if err != nil {
-		return false
+// Returns bytes representation of private key (code borrowed from ethereum project)
+func MarshalPrivateKey(priv *ecdsa.PrivateKey) []byte {
+	if priv == nil {
+		return nil
 	}
-	return ecdsa.Verify(pubKey, hash, r, s)
+	return priv.D.Bytes()
 }
 
-func MarshalPrivateKey(priv *ecdsa.PrivateKey) ([]byte, error) {
-	return x509.MarshalECPrivateKey(priv)
-}
-
-func MarshalPublicKey(pub *ecdsa.PublicKey) ([]byte, error) {
-	return x509.MarshalPKIXPublicKey(pub)
-}
-
-func ParsePrivateKey(priv []byte) (*ecdsa.PrivateKey, error) {
-	return x509.ParseECPrivateKey(priv)
-}
-
-func ParsePublicKey(pub []byte) (*ecdsa.PublicKey, error) {
-	pubKey, err := x509.ParsePKIXPublicKey(pub)
-	if err != nil {
-		return nil, err
+// Returns bytes representation of public key (code borrowed from ethereum project)
+func MarshalPublicKey(pub *ecdsa.PublicKey) []byte {
+	if pub == nil || pub.X == nil || pub.Y == nil {
+		return nil
 	}
-	if pubKey, ok := pubKey.(*ecdsa.PublicKey); ok {
-		return pubKey, nil
+	return elliptic.Marshal(S256(), pub.X, pub.Y)
+}
+
+// Parses bytes representation of private key (code borrowed from ethereum project)
+func ParsePrivateKey(data []byte) *ecdsa.PrivateKey {
+	if len(data) == 0 {
+		return nil
 	}
-	return nil, errors.New(fmt.Sprintf("Invalid type \"%T\" of public key \"%v\"\n", pubKey, pub))
+	priv := new(ecdsa.PrivateKey)
+	priv.PublicKey.Curve = S256()
+	priv.D = new(big.Int).SetBytes(data)
+	priv.PublicKey.X, priv.PublicKey.Y = priv.PublicKey.Curve.ScalarBaseMult(data)
+	return priv
+}
+
+// Parses bytes representation of public key (code borrowed from ethereum project)
+func ParsePublicKey(data []byte) *ecdsa.PublicKey {
+	if len(data) == 0 {
+		return nil
+	}
+	x, y := elliptic.Unmarshal(S256(), data)
+	return &ecdsa.PublicKey{Curve: S256(), X: x, Y: y}
 }
 
 // SHA256 + RIPEMD160
