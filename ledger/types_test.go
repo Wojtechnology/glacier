@@ -63,3 +63,17 @@ func TestEncodeDecodeNonce(t *testing.T) {
 	var i uint64 = 42
 	test.AssertEqual(t, i, EncodeNonce(i).Uint64())
 }
+
+func TestPaddedBytes(t *testing.T) {
+	x := new(big.Int).SetBytes([]byte{1, 2, 3})
+	expected := []byte{0, 1, 2, 3}
+	actual := PaddedBytes(x, 4)
+	test.AssertBytesEqual(t, expected, actual)
+}
+
+func TestPaddedBytesLonger(t *testing.T) {
+	x := new(big.Int).SetBytes([]byte{1, 2, 3, 4, 5})
+	expected := []byte{1, 2, 3, 4, 5}
+	actual := PaddedBytes(x, 4)
+	test.AssertBytesEqual(t, expected, actual)
+}

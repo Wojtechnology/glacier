@@ -37,12 +37,22 @@ func (t *Transaction) From() (Address, error) {
 	var emptyAddr Address
 	if t.R == nil || t.S == nil || t.V == nil {
 		// TODO: Maybe new error for this
-		return emptyAddr, errors.New("Transaction is missing a signature")
+		return emptyAddr, errors.New("Transaction is missing a signature\n")
 	}
 
 	sig := make([]byte, 65)
-	r, s, v := t.R.Bytes(), t.S.Bytes(), t.V.Bytes()
+	r, s, v := PaddedBytes(t.R, 32), PaddedBytes(t.S, 32), PaddedBytes(t.V, 1)
 	hash := t.SigHash()
+
+	if len(r) != 32 {
+		return emptyAddr, errors.New(fmt.Sprintf("t.R = %v, should be 32 bytes long\n", r))
+	}
+	if len(s) != 32 {
+		return emptyAddr, errors.New(fmt.Sprintf("t.S = %v, should be 32 bytes long\n", s))
+	}
+	if len(v) != 1 {
+		return emptyAddr, errors.New(fmt.Sprintf("t.V = %v, should be 1 byte long\n", v))
+	}
 
 	for i := range r {
 		sig[i] = r[i]

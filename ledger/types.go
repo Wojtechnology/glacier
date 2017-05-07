@@ -106,6 +106,24 @@ func BytesToBig(b []byte) *big.Int {
 	return i
 }
 
+// Returns byte representation of big int, left padded with 0's to be as long as n
+// If length of x is larger than n, just returns n
+func PaddedBytes(x *big.Int, n int) []byte {
+	data := x.Bytes()
+	if len(data) >= n {
+		return data
+	}
+	padded := make([]byte, n)
+	diff := n - len(data)
+	for i := 0; i < diff; i++ {
+		padded[i] = 0
+	}
+	for i := diff; i < len(padded); i++ {
+		padded[i] = data[i-diff]
+	}
+	return padded
+}
+
 /*
 * BlockNonce helper methods
  */
