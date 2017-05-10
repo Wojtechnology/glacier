@@ -62,7 +62,7 @@ func (t *Transaction) From() (Address, error) {
 	}
 	sig[64] = v[0]
 
-	pub, err := crypto.RetrievePublicKey(hash[:], sig)
+	pub, err := crypto.RetrievePublicKey(hash.Bytes(), sig)
 	if err != nil {
 		return emptyAddr, err
 	}
@@ -73,7 +73,7 @@ func (t *Transaction) From() (Address, error) {
 // Signs the transaction body and writes the corresponding values to V, R, S
 func SignTx(t *Transaction, priv *ecdsa.PrivateKey) (*Transaction, error) {
 	hash := t.SigHash()
-	sig, err := crypto.Sign(hash[:], priv)
+	sig, err := crypto.Sign(hash.Bytes(), priv)
 	if err != nil {
 		return nil, err
 	}

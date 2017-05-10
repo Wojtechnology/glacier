@@ -10,5 +10,8 @@ const (
 	// Related to transactions
 	unspendTxOutputPrefix = "utxo"
 
+	// Related to state
+	accountPrefix = "a"
+
 	genesisParentHash = "FILL IN WITH SOMETHING"
 )

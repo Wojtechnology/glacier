@@ -1,7 +1,6 @@
 package ledger
 
 import (
-	"fmt"
 	"math/big"
 	"testing"
 
@@ -14,7 +13,6 @@ import (
 // Tests both SignTx as well as From functions
 func TestSignTxFrom(t *testing.T) {
 	priv, err := crypto.NewPrivateKey()
-	fmt.Printf("priv = %v\n", priv.D.Bytes())
 	assert.Nil(t, err)
 
 	tx := &Transaction{To: []byte("fam"), Amount: big.NewInt(1000000)}
