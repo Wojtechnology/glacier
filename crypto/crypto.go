@@ -3,7 +3,7 @@ package crypto
 import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
-	// "crypto/rand"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"golang.org/x/crypto/ripemd160"
@@ -18,13 +18,7 @@ func S256() elliptic.Curve {
 }
 
 func NewPrivateKey() (priv *ecdsa.PrivateKey, err error) {
-	// return ecdsa.GenerateKey(S256(), rand.Reader)
-	priv = new(ecdsa.PrivateKey)
-	data := []byte{73, 59, 140, 154, 253, 185, 180, 197, 255, 114, 161, 26, 215, 228, 235, 29, 156, 34, 189, 69, 1, 58, 244, 243, 74, 22, 252, 13, 176, 112, 147, 8}
-	priv.D = new(big.Int).SetBytes(data)
-	priv.PublicKey.Curve = S256()
-	priv.PublicKey.X, priv.PublicKey.Y = priv.PublicKey.Curve.ScalarBaseMult(data)
-	return priv, nil
+	return ecdsa.GenerateKey(S256(), rand.Reader)
 }
 
 // Retrieves public key from signature used to sign hash

@@ -51,7 +51,7 @@ func TestWriteReadHeadBlockHeader(t *testing.T) {
 func TestWriteReadBlockBody(t *testing.T) {
 	b := new(BlockBody)
 	trans := &Transaction{V: big.NewInt(42), R: big.NewInt(43), S: big.NewInt(44),
-		To: []byte("123"), Amount: big.NewInt(45)}
+		To: StringToAddress("123"), Amount: big.NewInt(45)}
 	b.Transactions = append(b.Transactions, trans)
 	db, _ := meddb.NewMemoryDatabase()
 	hash := StringToHash("some hash")

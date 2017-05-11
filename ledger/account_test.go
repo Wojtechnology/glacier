@@ -1,7 +1,6 @@
 package ledger
 
 import (
-	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -11,11 +10,8 @@ import (
 )
 
 func TestReadWriteAccount(t *testing.T) {
-	a := &Account{
-		Nonce:   AccountNonce(EncodeNonce(42)),
-		Addr:    StringToAddress("home"),
-		Balance: big.NewInt(41),
-	}
+	a, _, err := NewAccount()
+	assert.Nil(t, err)
 	db, err := meddb.NewMemoryDatabase()
 	assert.Nil(t, err)
 

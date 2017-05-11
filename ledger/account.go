@@ -2,10 +2,12 @@ package ledger
 
 import (
 	"bytes"
+	"crypto/ecdsa"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/rlp"
 
+	"github.com/wojtechnology/glacier/crypto"
 	"github.com/wojtechnology/glacier/meddb"
 )
 
@@ -47,4 +49,17 @@ func GetAccount(db meddb.Database, addr Address) (*Account, error) {
 		return nil, err
 	}
 	return a, nil
+}
+
+// Returns an Account with a randomly generate private key/address
+func NewAccount() (*Account, *ecdsa.PrivateKey, error) {
+	priv, err := crypto.NewPrivateKey()
+	if err != nil {
+		return nil, nil, err
+	}
+	return &Account{
+		Nonce:   AccountNonce(EncodeNonce(0)),
+		Addr:    AddressFromPubKey(crypto.MarshalPublicKey(&priv.PublicKey)),
+		Balance: big.NewInt(0),
+	}, priv, nil
 }

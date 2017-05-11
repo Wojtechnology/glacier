@@ -15,7 +15,7 @@ func TestSignTxFrom(t *testing.T) {
 	priv, err := crypto.NewPrivateKey()
 	assert.Nil(t, err)
 
-	tx := &Transaction{To: []byte("fam"), Amount: big.NewInt(1000000)}
+	tx := &Transaction{To: StringToAddress("fam"), Amount: big.NewInt(1000000)}
 	signedTx, err := SignTx(tx, priv)
 	assert.Nil(t, err)
 	test.AssertEqual(t, tx.To, signedTx.To)

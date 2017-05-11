@@ -13,7 +13,7 @@ type Transaction struct {
 	AccountNonce uint64
 	V            *big.Int
 	R, S         *big.Int
-	To           []byte
+	To           Address
 	Amount       *big.Int
 }
 
@@ -22,7 +22,7 @@ type Transaction struct {
 // ---------------
 
 type TransactionBody struct {
-	To     []byte
+	To     Address
 	Amount *big.Int
 }
 

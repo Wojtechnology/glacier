@@ -1,6 +1,8 @@
 package ledger
 
 import (
+	"errors"
+
 	"github.com/wojtechnology/glacier/meddb"
 )
 
@@ -35,7 +37,52 @@ func NewChain(db meddb.Database) (*Chain, error) {
 }
 
 // Adds transaction to head block in chain, gives reward to owner
-// Returns modified transaction with reward added.
-func (c *Chain) AddTransaction(t *Transaction, ownerPubKey []byte) (*Transaction, error) {
-	return nil, nil
+// TODO: Add transaction fee and return state change
+func (c *Chain) AddTransaction(t *Transaction) (*Transaction, error) {
+	from, err := t.From()
+	if err != nil {
+		return nil, err
+	}
+
+	fromAcc, err := GetAccount(c.DB, from)
+	if err != nil {
+		return nil, err
+	}
+
+	if t.Amount.Cmp(fromAcc.Balance) == 1 {
+		// TODO: Maybe new error for insufficient funds
+		return nil, errors.New("Not enough account balance to complete transaction\n")
+	}
+
+	toAcc, err := GetAccount(c.DB, t.To)
+	if err != nil {
+		return nil, err
+	}
+
+	fromAcc.Balance.Sub(fromAcc.Balance, t.Amount)
+	toAcc.Balance.Add(toAcc.Balance, t.Amount)
+
+	err = fromAcc.Write(c.DB)
+	if err != nil {
+		return nil, err
+	}
+
+	err = toAcc.Write(c.DB)
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.HeadCandidate.AddTransaction(t)
+	if err != nil {
+		return nil, err
+	}
+	err = c.HeadCandidate.WriteHead(c.DB)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: Figure out how to test this
+	c.DB.Commit()
+
+	return t, nil
 }
