@@ -13,6 +13,14 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
 
+// Taken from https://github.com/ethereum/go-ethereum/blob/master/common/math/big.go
+const (
+	// number of bits in a big.Word
+	wordBits = 32 << (uint64(^big.Word(0)) >> 63)
+	// number of bytes in a big.Word
+	wordBytes = wordBits / 8
+)
+
 func S256() elliptic.Curve {
 	return secp256k1.S256()
 }
@@ -31,7 +39,31 @@ func Sign(hash []byte, priv *ecdsa.PrivateKey) (sig []byte, err error) {
 	if len(hash) != 32 {
 		return nil, errors.New(fmt.Sprintf("Hash \"%v\" should be of length 32", hash))
 	}
-	return secp256k1.Sign(hash, priv.D.Bytes())
+	privBytes := paddedBigIntBytes(priv.D, priv.Params().BitSize/8)
+	defer zeroBytes(privBytes)
+	return secp256k1.Sign(hash, privBytes)
+}
+
+func paddedBigIntBytes(b *big.Int, n int) []byte {
+	if b.BitLen()/8 >= n {
+		return b.Bytes()
+	}
+	ret := make([]byte, n)
+	i := n
+	for _, word := range b.Bits() {
+		for j := 0; j < wordBytes && i > 0; j++ {
+			i--
+			ret[i] = byte(word)
+			word >>= 8
+		}
+	}
+	return ret
+}
+
+func zeroBytes(b []byte) {
+	for i, _ := range b {
+		b[i] = 0
+	}
 }
 
 // Returns bytes representation of private key (code borrowed from ethereum project)
