@@ -37,7 +37,7 @@ func NewChain(db meddb.Database) (*Chain, error) {
 }
 
 // Adds transaction to head block in chain, gives reward to owner
-// TODO: Add transaction fee and return state change
+// TODO: Basically redo when we have tables done
 func (c *Chain) AddTransaction(t *Transaction) (*Transaction, error) {
 	from, err := t.From()
 	if err != nil {
