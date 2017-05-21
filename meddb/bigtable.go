@@ -186,6 +186,9 @@ func (t *MemoryBigtable) Get(tableName, rowId []byte, cells []*Cell) ([]*Cell, e
 }
 
 func (t *MemoryBigtable) CreateTable(tableName []byte, colNames [][]byte) error {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+
 	_, err := t.getTable(tableName)
 	if err == nil {
 		return errors.New(fmt.Sprintf("Table \"%v\" already exists\n", tableName))
