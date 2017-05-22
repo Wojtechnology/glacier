@@ -28,8 +28,7 @@ func assertCellsEqual(t *testing.T, a, b *Cell) {
 func TestMemoryTablePutGet(t *testing.T) {
 	mem, _ := NewMemoryBigtable()
 	tableName := []byte("IAMTABLE")
-	colNames := [][]byte{[]byte("bruh"), []byte("fam")}
-	err := mem.CreateTable(tableName, colNames)
+	err := mem.CreateTable(tableName)
 	assert.Nil(t, err)
 
 	rowId := []byte("asdf")
@@ -56,8 +55,7 @@ func TestMemoryTablePutGet(t *testing.T) {
 func TestMemoryTableLater(t *testing.T) {
 	mem, _ := NewMemoryBigtable()
 	tableName := []byte("IAMTABLE")
-	colNames := [][]byte{[]byte("bruh"), []byte("fam")}
-	err := mem.CreateTable(tableName, colNames)
+	err := mem.CreateTable(tableName)
 	assert.Nil(t, err)
 
 	rowId := []byte("asdf")
@@ -88,8 +86,7 @@ func TestMemoryTableLater(t *testing.T) {
 func TestMemoryTableWithVerId(t *testing.T) {
 	mem, _ := NewMemoryBigtable()
 	tableName := []byte("IAMTABLE")
-	colNames := [][]byte{[]byte("bruh"), []byte("fam")}
-	err := mem.CreateTable(tableName, colNames)
+	err := mem.CreateTable(tableName)
 	assert.Nil(t, err)
 
 	rowId := []byte("asdf")
@@ -115,32 +112,17 @@ func TestMemoryTableWithVerId(t *testing.T) {
 func TestMemoryTableMissingTablePut(t *testing.T) {
 	mem, _ := NewMemoryBigtable()
 	tableName := []byte("IAMTABLE")
-	colNames := [][]byte{[]byte("bruh")}
-	err := mem.CreateTable(tableName, colNames)
+	err := mem.CreateTable(tableName)
 	assert.Nil(t, err)
 
 	err = mem.Put([]byte("IAMNOTTABLE"), nil, nil)
 	assert.IsType(t, errors.New(""), err)
 }
 
-func TestMemoryTableInvalidColPut(t *testing.T) {
-	mem, _ := NewMemoryBigtable()
-	tableName := []byte("IAMTABLE")
-	colNames := [][]byte{[]byte("bruh")}
-	err := mem.CreateTable(tableName, colNames)
-	assert.Nil(t, err)
-
-	cells := make([]*Cell, 1)
-	cells[0] = NewCell([]byte("fam"), big.NewInt(69), []byte("yo"))
-	err = mem.Put(tableName, []byte("yo"), cells)
-	assert.IsType(t, errors.New(""), err)
-}
-
 func TestMemoryTableVerIdAlreadyExistsPut(t *testing.T) {
 	mem, _ := NewMemoryBigtable()
 	tableName := []byte("IAMTABLE")
-	colNames := [][]byte{[]byte("bruh")}
-	err := mem.CreateTable(tableName, colNames)
+	err := mem.CreateTable(tableName)
 	assert.Nil(t, err)
 
 	cells := make([]*Cell, 1)
@@ -159,8 +141,7 @@ func TestMemoryTableVerIdAlreadyExistsPut(t *testing.T) {
 func TestMemoryTableMissingTableGet(t *testing.T) {
 	mem, _ := NewMemoryBigtable()
 	tableName := []byte("IAMTABLE")
-	colNames := [][]byte{[]byte("bruh")}
-	err := mem.CreateTable(tableName, colNames)
+	err := mem.CreateTable(tableName)
 	assert.Nil(t, err)
 
 	_, err = mem.Get([]byte("IAMNOTTABLE"), nil, nil)
@@ -170,8 +151,7 @@ func TestMemoryTableMissingTableGet(t *testing.T) {
 func TestMemoryTableMissingRowGet(t *testing.T) {
 	mem, _ := NewMemoryBigtable()
 	tableName := []byte("IAMTABLE")
-	colNames := [][]byte{[]byte("bruh")}
-	err := mem.CreateTable(tableName, colNames)
+	err := mem.CreateTable(tableName)
 	assert.Nil(t, err)
 
 	cells := make([]*Cell, 1)
@@ -180,29 +160,10 @@ func TestMemoryTableMissingRowGet(t *testing.T) {
 	assert.IsType(t, errors.New(""), err)
 }
 
-func TestMemoryTableEmptyCellGet(t *testing.T) {
+func TestMemoryTableMissingColGet(t *testing.T) {
 	mem, _ := NewMemoryBigtable()
 	tableName := []byte("IAMTABLE")
-	colNames := [][]byte{[]byte("bruh"), []byte("fam")}
-	err := mem.CreateTable(tableName, colNames)
-	assert.Nil(t, err)
-
-	cells := make([]*Cell, 1)
-	cells[0] = NewCell([]byte("bruh"), big.NewInt(69), []byte("yo"))
-	err = mem.Put(tableName, []byte("yo"), cells)
-	assert.Nil(t, err)
-
-	cells = make([]*Cell, 1)
-	cells[0] = NewCell([]byte("fam"), big.NewInt(69), nil)
-	_, err = mem.Get(tableName, []byte("yo"), cells)
-	assert.IsType(t, errors.New(""), err)
-}
-
-func TestMemoryTableInvalidColGet(t *testing.T) {
-	mem, _ := NewMemoryBigtable()
-	tableName := []byte("IAMTABLE")
-	colNames := [][]byte{[]byte("bruh")}
-	err := mem.CreateTable(tableName, colNames)
+	err := mem.CreateTable(tableName)
 	assert.Nil(t, err)
 
 	cells := make([]*Cell, 1)
@@ -219,8 +180,7 @@ func TestMemoryTableInvalidColGet(t *testing.T) {
 func TestMemoryTableMissingVerIdGet(t *testing.T) {
 	mem, _ := NewMemoryBigtable()
 	tableName := []byte("IAMTABLE")
-	colNames := [][]byte{[]byte("bruh")}
-	err := mem.CreateTable(tableName, colNames)
+	err := mem.CreateTable(tableName)
 	assert.Nil(t, err)
 
 	cells := make([]*Cell, 1)
@@ -241,10 +201,9 @@ func TestMemoryTableMissingVerIdGet(t *testing.T) {
 func TestMemoryTableCreateAlreadyExists(t *testing.T) {
 	mem, _ := NewMemoryBigtable()
 	tableName := []byte("IAMTABLE")
-	colNames := [][]byte{[]byte("bruh")}
-	err := mem.CreateTable(tableName, colNames)
+	err := mem.CreateTable(tableName)
 	assert.Nil(t, err)
 
-	err = mem.CreateTable(tableName, colNames)
+	err = mem.CreateTable(tableName)
 	assert.IsType(t, errors.New(""), err)
 }

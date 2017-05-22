@@ -11,7 +11,7 @@ import (
 type Bigtable interface {
 	Put(tableName, rowId []byte, cells []*Cell) error
 	Get(tableName, rowId []byte, cells []*Cell) ([]*Cell, error)
-	CreateTable(tableName []byte, colNames [][]byte) error
+	CreateTable(tableName []byte) error
 }
 
 type Cell struct {
@@ -26,8 +26,7 @@ type MemoryBigtable struct {
 }
 
 type memoryTable struct {
-	rows     map[string]*memoryRow
-	colNames [][]byte
+	rows map[string]*memoryRow
 }
 
 type memoryRow struct {
@@ -106,11 +105,9 @@ func (t *MemoryBigtable) Put(tableName, rowId []byte, cells []*Cell) error {
 
 	row, err := table.getRow(rowId)
 	if err != nil {
+		// Row doesn't exist yet. If other errors can be thrown, check type here.
 		row = &memoryRow{cols: make(map[string]*memoryCol)}
 		table.rows[string(rowId)] = row
-		for _, colName := range table.colNames {
-			row.cols[string(colName)] = &memoryCol{cells: make(map[string]*Cell)}
-		}
 	}
 
 	curTimestamp := curTimeMillis()
@@ -123,10 +120,9 @@ func (t *MemoryBigtable) Put(tableName, rowId []byte, cells []*Cell) error {
 
 		col, err := row.getCol(cell.ColId)
 		if err != nil {
-			return err
-		}
-
-		if _, err = col.getCell(cell.VerId); err == nil {
+			// Column doesn't exist yet. If other errors can be thrown, check type here.
+			row.cols[string(cell.ColId)] = &memoryCol{cells: make(map[string]*Cell)}
+		} else if _, err = col.getCell(cell.VerId); err == nil {
 			return errors.New(fmt.Sprintf("Version \"%v\" already exists\n", cell.VerId))
 		}
 		cellsToWrite = append(cellsToWrite, cell)
@@ -165,10 +161,6 @@ func (t *MemoryBigtable) Get(tableName, rowId []byte, cells []*Cell) ([]*Cell, e
 			return nil, err
 		}
 
-		if col.largestVerId == nil {
-			return nil, errors.New(fmt.Sprintf("Col \"%v\" doesn't have any cells\n", cell.ColId))
-		}
-
 		if cell.VerId == nil {
 			cell.VerId = new(big.Int)
 			cell.VerId.Set(col.largestVerId)
@@ -185,7 +177,7 @@ func (t *MemoryBigtable) Get(tableName, rowId []byte, cells []*Cell) ([]*Cell, e
 	return res, nil
 }
 
-func (t *MemoryBigtable) CreateTable(tableName []byte, colNames [][]byte) error {
+func (t *MemoryBigtable) CreateTable(tableName []byte) error {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
@@ -194,10 +186,7 @@ func (t *MemoryBigtable) CreateTable(tableName []byte, colNames [][]byte) error 
 		return errors.New(fmt.Sprintf("Table \"%v\" already exists\n", tableName))
 	}
 
-	t.tables[string(tableName)] = &memoryTable{
-		rows:     make(map[string]*memoryRow),
-		colNames: colNames,
-	}
+	t.tables[string(tableName)] = &memoryTable{rows: make(map[string]*memoryRow)}
 
 	return nil
 }
