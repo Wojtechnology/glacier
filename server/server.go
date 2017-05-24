@@ -26,12 +26,12 @@ func serverInit() {
 func main() {
 	addresses := make([]string, 1)
 	addresses[0] = "127.0.0.1"
-	db, err := meddb.NewCassandraBigtable(addresses, "test")
+	db, err := meddb.NewRethinkBigtable(addresses)
 	if err != nil {
 		panic(err)
 	}
 
-	err = db.CreateTable([]byte("HELLO"), [][]byte{[]byte("ayy")})
+	err = db.CreateTable([]byte("HELLO"))
 	if err != nil {
 		panic(err)
 	}
