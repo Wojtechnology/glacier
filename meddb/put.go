@@ -27,6 +27,16 @@ func (op *PutOp) AddColVer(colId []byte, verId int64, data []byte) error {
 	return nil
 }
 
+func (op *PutOp) cells() []*Cell {
+	cells := make([]*Cell, len(op.cols))
+	i := 0
+	for _, cell := range op.cols {
+		cells[i] = cell
+		i++
+	}
+	return cells
+}
+
 func (op *PutOp) fillVer(verId int64) {
 	for _, cell := range op.cols {
 		if cell.VerId == nil {
