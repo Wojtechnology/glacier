@@ -46,6 +46,7 @@ func (bt *MemoryBigtable) Put(tableName []byte, op *PutOp) error {
 	row, err := table.getRow(op.rowId)
 	if err != nil {
 		row = &memoryRow{cols: make(map[string][]*Cell)}
+		table.rows[string(op.rowId)] = row
 	}
 
 	// Fill in missing verIds with current time in ms
@@ -59,7 +60,7 @@ func (bt *MemoryBigtable) Put(tableName []byte, op *PutOp) error {
 		if ok {
 			idxs[i] = findCell(col, cell.VerId.Int64())
 			// If this verId already exists, return error
-			if col[idxs[i]].VerId.Cmp(cell.VerId) == 0 {
+			if idxs[i] < len(col) && col[idxs[i]].VerId.Cmp(cell.VerId) == 0 {
 				return &VerIdAlreadyExists{VerId: cell.VerId}
 			}
 		}
@@ -70,7 +71,15 @@ func (bt *MemoryBigtable) Put(tableName []byte, op *PutOp) error {
 		colString := string(cell.ColId)
 		col, ok := row.cols[colString]
 		if ok {
-			row.cols[colString] = append(append(col[:idxs[i]], cell.Clone()), col[idxs[i]:]...)
+			// Add space for one more element
+			row.cols[colString] = append(col, nil)
+			col = row.cols[colString]
+			// Shift tail elements by 1
+			for j := len(col) - 1; j > idxs[i]; j-- {
+				col[j] = col[j-1]
+			}
+			// Insert actual cell
+			col[idxs[i]] = cell.Clone()
 		} else {
 			row.cols[colString] = []*Cell{cell.Clone()}
 		}
@@ -83,20 +92,55 @@ func (bt *MemoryBigtable) Get(tableName []byte, op *GetOp) (map[string][]*Cell, 
 	bt.lock.Lock()
 	defer bt.lock.Unlock()
 
-	_, err := bt.getTable(tableName)
+	table, err := bt.getTable(tableName)
 	if err != nil {
 		return nil, err
 	}
 
 	res := make(map[string][]*Cell)
-	if op.verId != nil {
-		// Strategy: getExact
-	} else if op.minVer != nil && op.maxVer != nil {
-		// Strategy: getRange
-	} else if op.limit != 0 {
-		// Strategy: getLimit
-	} else {
-		// Strategy: getAll
+	row, err := table.getRow(op.rowId)
+	if err != nil {
+		// Row doesn't exist, return empty map
+		return res, nil
+	}
+
+	for _, colId := range op.colIds {
+		colString := string(colId)
+		col, ok := row.cols[colString]
+		if ok {
+			if op.verId != nil {
+				// Strategy: getExact
+				idx := findCell(col, op.verId.Int64())
+				if idx < len(col) && col[idx].VerId.Cmp(op.verId) == 0 {
+					res[colString] = []*Cell{col[idx].Clone()}
+				}
+			} else if op.minVer != nil && op.maxVer != nil {
+				// Strategy: getRange
+				// Since this is sorted by decreasing, the minimum is actually a higher index
+				hi := findCell(col, op.minVer.Int64())
+				if hi < len(col) && col[hi].VerId.Cmp(op.minVer) == 0 {
+					// This will allow us to pick up a value on the boundary
+					hi++
+				}
+				lo := findCell(col, op.maxVer.Int64())
+				for i := lo; i < hi; i++ {
+					if res[colString] == nil {
+						res[colString] = []*Cell{col[i].Clone()}
+					} else {
+						res[colString] = append(res[colString], col[i].Clone())
+					}
+				}
+			} else {
+				// Strategy: getLimit or getAll
+				res[colString] = make([]*Cell, 0)
+				for i, cell := range col {
+					if op.limit > 0 && uint32(i) >= op.limit {
+						break
+					}
+					res[colString] = append(res[colString], cell.Clone())
+				}
+			}
+		}
 	}
 
 	return res, nil

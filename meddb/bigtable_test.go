@@ -19,9 +19,9 @@ func assertCellsEqual(t *testing.T, a, b *Cell) {
 	test.AssertEqual(t, a.VerId, b.VerId)
 }
 
-// --------
-// Test Put
-// --------
+// -------------------
+// Test Put/Get Memory
+// -------------------
 
 func TestMemoryPutGet(t *testing.T) {
 	bt, err := NewMemoryBigtable()
@@ -29,9 +29,57 @@ func TestMemoryPutGet(t *testing.T) {
 	testPutGet(t, bt)
 }
 
-// ---------------
-// Test Put Common
-// ---------------
+func TestMemoryPutGetEmpty(t *testing.T) {
+	bt, err := NewMemoryBigtable()
+	assert.Nil(t, err)
+	testPutGetEmpty(t, bt)
+}
+
+func TestMemoryPutGetVer(t *testing.T) {
+	bt, err := NewMemoryBigtable()
+	assert.Nil(t, err)
+	testPutGetVer(t, bt)
+}
+
+func TestMemoryGetExact(t *testing.T) {
+	bt, err := NewMemoryBigtable()
+	assert.Nil(t, err)
+	testGetExact(t, bt)
+}
+
+func TestMemoryGetLimit(t *testing.T) {
+	bt, err := NewMemoryBigtable()
+	assert.Nil(t, err)
+	testGetLimit(t, bt)
+}
+
+func TestMemoryGetRange(t *testing.T) {
+	bt, err := NewMemoryBigtable()
+	assert.Nil(t, err)
+	testGetRange(t, bt)
+}
+
+func TestMemoryPutTableNotFound(t *testing.T) {
+	bt, err := NewMemoryBigtable()
+	assert.Nil(t, err)
+	testPutTableNotFound(t, bt)
+}
+
+func TestMemoryGetTableNotFound(t *testing.T) {
+	bt, err := NewMemoryBigtable()
+	assert.Nil(t, err)
+	testGetTableNotFound(t, bt)
+}
+
+func TestMemoryCreateTableAlreadyExists(t *testing.T) {
+	bt, err := NewMemoryBigtable()
+	assert.Nil(t, err)
+	testCreateTableAlreadyExists(t, bt)
+}
+
+// -------------------
+// Test Put/Get Common
+// -------------------
 
 func testPutGet(t *testing.T, bt Bigtable) {
 	tableName := []byte("I AM TABLE")
@@ -39,16 +87,158 @@ func testPutGet(t *testing.T, bt Bigtable) {
 	colId := []byte("YO FAM")
 	data := []byte("OH SHIT WADDUP")
 
-	op := NewPutOp(rowId)
-	op.AddCol(colId, data)
+	err := bt.CreateTable(tableName)
+	assert.Nil(t, err)
+
+	putAndCheck(t, bt, tableName, rowId, colId, data)
+
+	getOp := NewGetOp(rowId, [][]byte{colId})
+
+	res, err := bt.Get(tableName, getOp)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(res[string(colId)]))
+	assertCellsEqualNoVerId(t, NewCell(rowId, colId, data), res[string(colId)][0])
+	assert.NotNil(t, res[string(colId)][0].VerId)
+}
+
+func testPutGetEmpty(t *testing.T, bt Bigtable) {
+	tableName := []byte("I AM TABLE")
+	rowId := []byte("AYY LMAO")
+	colId := []byte("YO FAM")
 
 	err := bt.CreateTable(tableName)
 	assert.Nil(t, err)
 
-	err = bt.Put(tableName, op)
+	getOp := NewGetOp(rowId, [][]byte{colId})
+
+	res, err := bt.Get(tableName, getOp)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(res))
+}
+
+func testPutGetVer(t *testing.T, bt Bigtable) {
+	tableName := []byte("I AM TABLE")
+	rowId := []byte("AYY LMAO")
+	colId := []byte("YO FAM")
+	data := []byte("OH SHIT WADDUP")
+
+	err := bt.CreateTable(tableName)
 	assert.Nil(t, err)
 
-	// Test get
+	putVerCells(t, bt, tableName, rowId, colId, []int64{3, 1, 7, 5}, data)
+
+	getOp := NewGetOp(rowId, [][]byte{colId})
+
+	res, err := bt.Get(tableName, getOp)
+	assert.Nil(t, err)
+	assert.Equal(t, 4, len(res[string(colId)]))
+	assertCellsEqual(t, NewCellVer(rowId, colId, 7, data), res[string(colId)][0])
+	assertCellsEqual(t, NewCellVer(rowId, colId, 5, data), res[string(colId)][1])
+	assertCellsEqual(t, NewCellVer(rowId, colId, 3, data), res[string(colId)][2])
+	assertCellsEqual(t, NewCellVer(rowId, colId, 1, data), res[string(colId)][3])
+}
+
+func testGetExact(t *testing.T, bt Bigtable) {
+	tableName := []byte("I AM TABLE")
+	rowId := []byte("AYY LMAO")
+	colId := []byte("YO FAM")
+	data := []byte("OH SHIT WADDUP")
+
+	err := bt.CreateTable(tableName)
+	assert.Nil(t, err)
+
+	putVerCells(t, bt, tableName, rowId, colId, []int64{3, 1, 7, 5}, data)
+
+	getOp := NewGetOpVer(rowId, [][]byte{colId}, 3)
+
+	res, err := bt.Get(tableName, getOp)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(res[string(colId)]))
+	assertCellsEqual(t, NewCellVer(rowId, colId, 3, data), res[string(colId)][0])
+
+	getOp = NewGetOpVer(rowId, [][]byte{colId}, 4)
+
+	res, err = bt.Get(tableName, getOp)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(res[string(colId)]))
+}
+
+func testGetLimit(t *testing.T, bt Bigtable) {
+	tableName := []byte("I AM TABLE")
+	rowId := []byte("AYY LMAO")
+	colId := []byte("YO FAM")
+	data := []byte("OH SHIT WADDUP")
+
+	err := bt.CreateTable(tableName)
+	assert.Nil(t, err)
+
+	putVerCells(t, bt, tableName, rowId, colId, []int64{3, 1, 7, 5}, data)
+
+	getOp := NewGetOpLimit(rowId, [][]byte{colId}, 2)
+
+	res, err := bt.Get(tableName, getOp)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(res[string(colId)]))
+	assertCellsEqual(t, NewCellVer(rowId, colId, 7, data), res[string(colId)][0])
+	assertCellsEqual(t, NewCellVer(rowId, colId, 5, data), res[string(colId)][1])
+}
+
+func testGetRange(t *testing.T, bt Bigtable) {
+	tableName := []byte("I AM TABLE")
+	rowId := []byte("AYY LMAO")
+	colId := []byte("YO FAM")
+	data := []byte("OH SHIT WADDUP")
+
+	err := bt.CreateTable(tableName)
+	assert.Nil(t, err)
+
+	putVerCells(t, bt, tableName, rowId, colId, []int64{3, 1, 7, 5}, data)
+
+	getOp := NewGetOpRange(rowId, [][]byte{colId}, 3, 5)
+
+	res, err := bt.Get(tableName, getOp)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(res[string(colId)]))
+	assertCellsEqual(t, NewCellVer(rowId, colId, 5, data), res[string(colId)][0])
+	assertCellsEqual(t, NewCellVer(rowId, colId, 3, data), res[string(colId)][1])
+
+	getOp = NewGetOpRange(rowId, [][]byte{colId}, 2, 6)
+
+	res, err = bt.Get(tableName, getOp)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(res[string(colId)]))
+	assertCellsEqual(t, NewCellVer(rowId, colId, 5, data), res[string(colId)][0])
+	assertCellsEqual(t, NewCellVer(rowId, colId, 3, data), res[string(colId)][1])
+
+	getOp = NewGetOpRange(rowId, [][]byte{colId}, -1, 10)
+
+	res, err = bt.Get(tableName, getOp)
+	assert.Nil(t, err)
+	assert.Equal(t, 4, len(res[string(colId)]))
+	assertCellsEqual(t, NewCellVer(rowId, colId, 7, data), res[string(colId)][0])
+	assertCellsEqual(t, NewCellVer(rowId, colId, 5, data), res[string(colId)][1])
+	assertCellsEqual(t, NewCellVer(rowId, colId, 3, data), res[string(colId)][2])
+	assertCellsEqual(t, NewCellVer(rowId, colId, 1, data), res[string(colId)][3])
+}
+
+func testPutTableNotFound(t *testing.T, bt Bigtable) {
+	err := bt.Put([]byte("I AM NOT IN THE DB"), nil)
+	assert.IsType(t, &TableNotFoundError{}, err)
+}
+
+func testGetTableNotFound(t *testing.T, bt Bigtable) {
+	_, err := bt.Get([]byte("I AM NOT IN THE DB"), nil)
+	assert.IsType(t, &TableNotFoundError{}, err)
+}
+
+func testCreateTableAlreadyExists(t *testing.T, bt Bigtable) {
+	tableName := []byte("FAM DON'T PUT ME IN")
+
+	err := bt.CreateTable(tableName)
+	assert.Nil(t, err)
+
+	err = bt.CreateTable(tableName)
+	assert.IsType(t, &TableAlreadyExists{}, err)
 }
 
 // ------------
@@ -85,4 +275,28 @@ func TestFindCell(t *testing.T) {
 func TestFindCellEmpty(t *testing.T) {
 	test.AssertEqual(t, -1, findCell(nil, 0))
 	test.AssertEqual(t, -1, findCell(make([]*Cell, 0), 0))
+}
+
+func putAndCheck(t *testing.T, bt Bigtable, tableName, rowId, colId, data []byte) {
+	putOp := NewPutOp(rowId)
+	putOp.AddCol(colId, data)
+
+	err := bt.Put(tableName, putOp)
+	assert.Nil(t, err)
+}
+
+func putAndCheckVer(t *testing.T, bt Bigtable, tableName, rowId, colId []byte, verId int64,
+	data []byte) {
+	putOp := NewPutOp(rowId)
+	putOp.AddColVer(colId, verId, data)
+
+	err := bt.Put(tableName, putOp)
+	assert.Nil(t, err)
+}
+
+func putVerCells(t *testing.T, bt Bigtable, tableName, rowId, colId []byte, verIds []int64,
+	data []byte) {
+	for _, verId := range verIds {
+		putAndCheckVer(t, bt, tableName, rowId, colId, verId, data)
+	}
 }

@@ -15,7 +15,7 @@ func (op *PutOp) AddCol(colId []byte, data []byte) error {
 	if _, ok := op.cols[string(colId)]; ok {
 		return &ColIdAlreadyExists{ColId: colId}
 	}
-	op.cols[string(colId)] = NewCell(op.rowId, colId, nil)
+	op.cols[string(colId)] = NewCell(op.rowId, colId, data)
 	return nil
 }
 
@@ -23,7 +23,7 @@ func (op *PutOp) AddColVer(colId []byte, verId int64, data []byte) error {
 	if _, ok := op.cols[string(colId)]; ok {
 		return &ColIdAlreadyExists{ColId: colId}
 	}
-	op.cols[string(colId)] = NewCellVer(op.rowId, colId, verId, nil)
+	op.cols[string(colId)] = NewCellVer(op.rowId, colId, verId, data)
 	return nil
 }
 
