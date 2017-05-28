@@ -232,7 +232,7 @@ func testGetTableNotFound(t *testing.T, bt Bigtable) {
 }
 
 func testCreateTableAlreadyExists(t *testing.T, bt Bigtable) {
-	tableName := []byte("FAM DON'T PUT ME IN")
+	tableName := []byte("FAMDONTPUTMEIN")
 
 	err := bt.CreateTable(tableName)
 	assert.Nil(t, err)

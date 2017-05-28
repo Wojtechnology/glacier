@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 
@@ -19,22 +20,33 @@ func setRoutes() {
 
 func serverInit() {
 	setRoutes()
-	print("Listening on " + PORT + "\n")
+	fmt.Printf("Listening on %s\n", PORT)
 	http.ListenAndServe(":"+PORT, nil)
 }
 
 func main() {
-	addresses := make([]string, 1)
-	addresses[0] = "127.0.0.1"
-	db, err := meddb.NewRethinkBigtable(addresses)
+	db, err := meddb.NewRethinkBigtable([]string{"127.0.0.1"}, "test")
 	if err != nil {
 		panic(err)
 	}
 
-	err = db.CreateTable([]byte("HELLO"))
+	rowId := bytesYo(61)
+	fmt.Printf("RowId: %v, len(%d)\n", rowId, len(rowId))
+	colId := bytesYo(24)
+	fmt.Printf("ColId: %v, len(%d)\n", colId, len(colId))
+	op := meddb.NewPutOp(rowId)
+	op.AddCol(colId, []byte("LIT"))
+
+	err = db.Put([]byte("HELLO"), op)
 	if err != nil {
 		panic(err)
 	}
+}
 
-	serverInit()
+func bytesYo(n int) []byte {
+	b := make([]byte, n)
+	for i := 0; i < n; i++ {
+		b[i] = 255
+	}
+	return b
 }
