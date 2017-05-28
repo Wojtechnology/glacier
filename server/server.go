@@ -24,11 +24,19 @@ func serverInit() {
 	http.ListenAndServe(":"+PORT, nil)
 }
 
+func createTable(db meddb.Bigtable, tableName []byte) {
+	if err := db.CreateTable(tableName); err != nil {
+		panic(err)
+	}
+}
+
 func main() {
 	db, err := meddb.NewRethinkBigtable([]string{"127.0.0.1"}, "test")
 	if err != nil {
 		panic(err)
 	}
+
+	// createTable(db, []byte("HELLO"))
 
 	rowId := bytesYo(61)
 	fmt.Printf("RowId: %v, len(%d)\n", rowId, len(rowId))
@@ -41,6 +49,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	res, err := db.Get([]byte("HELLO"), meddb.NewGetOp(rowId, [][]byte{colId}))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("%v\n", res)
 }
 
 func bytesYo(n int) []byte {

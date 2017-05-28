@@ -71,16 +71,50 @@ func (bt *RethinkBigtable) Get(tableName []byte, op *GetOp) (map[string][]*Cell,
 	bt.lock.Lock()
 	defer bt.lock.Unlock()
 
-	// var res *r.Cursor
+	colStrings := make([]string, len(op.colIds))
+	for i, colId := range op.colIds {
+		colStrings[i] = string(colId)
+	}
+
+	var (
+		res *r.Cursor
+		err error
+	)
 	if op.verId != nil {
 		// Strategy: getExact
 	} else if op.minVer != nil && op.maxVer != nil {
 		// Strategy: getRange
+	} else if op.limit != 0 {
+		// Strategy: getLimit
 	} else {
-		// Strategy: getLimit or getAll
+		// Strategy: getAll
+		res, err = r.DB(bt.database).Table(string(tableName)).GetAllByIndex(
+			"row_id", string(op.rowId),
+		).Filter(func(row r.Term) interface{} {
+			return r.Expr(colStrings).Contains(row.Field("col_id"))
+		}).Run(bt.session)
+	}
+	defer res.Close()
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, nil
+	var rows []*rethinkCell
+	if err := res.All(&rows); err != nil {
+		return nil, err
+	}
+
+	cells := make(map[string][]*Cell)
+	for _, row := range rows {
+		_ = NewCellVer(
+			[]byte(row.RowId),
+			[]byte(row.ColId),
+			bytesToInt64([]byte(row.VerId)),
+			[]byte(row.Data),
+		)
+	}
+
+	return cells, nil
 }
 
 func (bt *RethinkBigtable) CreateTable(tableName []byte) error {
@@ -92,6 +126,11 @@ func (bt *RethinkBigtable) CreateTable(tableName []byte) error {
 		if _, ok := err.(r.RQLOpFailedError); ok {
 			return &TableAlreadyExists{TableName: tableName}
 		}
+		return err
+	}
+
+	_, err = r.DB(bt.database).Table(string(tableName)).IndexCreate("row_id").RunWrite(bt.session)
+	if err != nil {
 		return err
 	}
 
@@ -144,13 +183,25 @@ func buildRethinkId(rowId, colId []byte, verId *big.Int) (string, error) {
 	return w.String(), nil
 }
 
+// Converts x to zero-padded byte array. Values are shifted so that smallest int64 becomes
+// 0x0000000000000000 and largest becomes 0x1111111111111111 to make range searches including
+// positive and negative version ids possible.
 func int64ToBytes(x int64) []byte {
-	// TODO(wojtek): make this a rethink specific method that shifts int64 to uint64 scale so
-	// that range searches work
+	x ^= -9223372036854775808 // 0b100000000000000...
 	b := make([]byte, 8)
 	for i := 7; i >= 0; i-- {
 		b[i] = byte(x)
 		x >>= 8
 	}
 	return b
+}
+
+func bytesToInt64(b []byte) int64 {
+	var x int64 = 0
+	for i := 0; i < 8; i++ {
+		x <<= 8
+		x |= int64(b[i])
+	}
+	x ^= -9223372036854775808 // 0b100000000000000...
+	return x
 }
