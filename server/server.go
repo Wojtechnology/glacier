@@ -38,23 +38,29 @@ func main() {
 
 	// createTable(db, []byte("HELLO"))
 
-	rowId := bytesYo(61)
-	fmt.Printf("RowId: %v, len(%d)\n", rowId, len(rowId))
-	colId := bytesYo(24)
-	fmt.Printf("ColId: %v, len(%d)\n", colId, len(colId))
-	op := meddb.NewPutOp(rowId)
-	op.AddCol(colId, []byte("LIT"))
+	rowId := []byte("AAAYYYYY")
+	colId := []byte("HEYYOOO")
+	putOp := meddb.NewPutOp(rowId)
+	putOp.AddCol(colId, []byte("LIT"))
 
-	err = db.Put([]byte("HELLO"), op)
+	err = db.Put([]byte("HELLO"), putOp)
 	if err != nil {
 		panic(err)
 	}
 
-	res, err := db.Get([]byte("HELLO"), meddb.NewGetOp(rowId, [][]byte{colId}))
+	res, err := db.Get([]byte("HELLO"), meddb.NewGetOpLimit(rowId, [][]byte{colId, []byte("HEYYOO")}, 3))
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("%v\n", res)
+	for col, cells := range res {
+		fmt.Printf("ROW    %s:\n", string(cells[0].RowId))
+		fmt.Printf("COLUMN %s:\n", string(col))
+		for i, cell := range cells {
+			fmt.Printf("\tRESULT %d:\n", i)
+			fmt.Printf("\t\tVERSION: %d\n", cell.VerId.Int64())
+			fmt.Printf("\t\tDATA:    %s\n", string(cell.Data))
+		}
+	}
 }
 
 func bytesYo(n int) []byte {

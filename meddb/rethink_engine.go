@@ -18,11 +18,11 @@ type RethinkBigtable struct {
 }
 
 type rethinkCell struct {
-	ID    string `gorethink:"id"`
-	RowId string `gorethink:"row_id"`
-	ColId string `gorethink:"col_id"`
-	VerId string `gorethink:"ver_id"`
-	Data  string `gorethink:"data"`
+	ID    []byte `gorethink:"id"`
+	RowId []byte `gorethink:"row_id"`
+	ColId []byte `gorethink:"col_id"`
+	VerId []byte `gorethink:"ver_id"`
+	Data  []byte `gorethink:"data"`
 }
 
 // -------------------
@@ -54,7 +54,6 @@ func (bt *RethinkBigtable) Put(tableName []byte, op *PutOp) error {
 			return err
 		}
 		rethinkCells[i] = rCell
-		fmt.Printf("%s, len(%d)\n", rCell.ID, len(rCell.ID))
 	}
 
 	_, err := r.DB(bt.database).Table(string(tableName)).Insert(rethinkCells, r.InsertOpts{
@@ -71,28 +70,46 @@ func (bt *RethinkBigtable) Get(tableName []byte, op *GetOp) (map[string][]*Cell,
 	bt.lock.Lock()
 	defer bt.lock.Unlock()
 
-	colStrings := make([]string, len(op.colIds))
-	for i, colId := range op.colIds {
-		colStrings[i] = string(colId)
-	}
-
 	var (
-		res *r.Cursor
-		err error
+		res       *r.Cursor
+		err       error
+		tableTerm r.Term = r.DB(bt.database).Table(string(tableName))
 	)
 	if op.verId != nil {
 		// Strategy: getExact
+		ids := make([]interface{}, len(op.colIds))
+		for i, colId := range op.colIds {
+			if ids[i], err = buildRethinkId(op.rowId, colId, op.verId); err != nil {
+				return nil, err
+			}
+		}
+		res, err = tableTerm.GetAll(ids...).Run(bt.session)
 	} else if op.minVer != nil && op.maxVer != nil {
 		// Strategy: getRange
+		lo, hi := int64ToBytes(op.minVer.Int64()), int64ToBytes(op.maxVer.Int64())
+		res, err = tableTerm.GetAllByIndex(
+			"row_id", op.rowId,
+		).Filter(func(row r.Term) interface{} {
+			return r.Expr(op.colIds).Contains(row.Field("col_id")).And(
+				row.Field("ver_id").Ge(lo),
+			).And(
+				row.Field("ver_id").Le(hi),
+			)
+		}).OrderBy(r.Desc("ver_id")).Run(bt.session)
 	} else if op.limit != 0 {
 		// Strategy: getLimit
+		res, err = tableTerm.GetAllByIndex(
+			"row_id", op.rowId,
+		).Filter(func(row r.Term) interface{} {
+			return r.Expr(op.colIds).Contains(row.Field("col_id"))
+		}).Group("col_id").OrderBy(r.Desc("ver_id")).Limit(op.limit).Run(bt.session)
 	} else {
 		// Strategy: getAll
-		res, err = r.DB(bt.database).Table(string(tableName)).GetAllByIndex(
-			"row_id", string(op.rowId),
+		res, err = tableTerm.GetAllByIndex(
+			"row_id", op.rowId,
 		).Filter(func(row r.Term) interface{} {
-			return r.Expr(colStrings).Contains(row.Field("col_id"))
-		}).Run(bt.session)
+			return r.Expr(op.colIds).Contains(row.Field("col_id"))
+		}).OrderBy(r.Desc("ver_id")).Run(bt.session)
 	}
 	defer res.Close()
 	if err != nil {
@@ -100,18 +117,46 @@ func (bt *RethinkBigtable) Get(tableName []byte, op *GetOp) (map[string][]*Cell,
 	}
 
 	var rows []*rethinkCell
-	if err := res.All(&rows); err != nil {
-		return nil, err
+	if op.limit != 0 {
+		// Special casing with limit because of group
+		var groupMap []map[string]interface{}
+		if err = res.All(&groupMap); err != nil {
+			return nil, err
+		}
+
+		for _, group := range groupMap {
+			for _, rowObj := range group["reduction"].([]interface{}) {
+				row := rowObj.(map[string]interface{})
+				rCell := &rethinkCell{
+					ID:    row["id"].([]byte),
+					RowId: row["row_id"].([]byte),
+					ColId: row["col_id"].([]byte),
+					VerId: row["ver_id"].([]byte),
+					Data:  row["data"].([]byte),
+				}
+				rows = append(rows, rCell)
+			}
+		}
+	} else {
+		if err := res.All(&rows); err != nil {
+			return nil, err
+		}
 	}
 
 	cells := make(map[string][]*Cell)
 	for _, row := range rows {
-		_ = NewCellVer(
-			[]byte(row.RowId),
-			[]byte(row.ColId),
-			bytesToInt64([]byte(row.VerId)),
-			[]byte(row.Data),
+		cell := NewCellVer(
+			row.RowId,
+			row.ColId,
+			bytesToInt64(row.VerId),
+			row.Data,
 		)
+
+		if _, ok := cells[string(cell.ColId)]; ok {
+			cells[string(cell.ColId)] = append(cells[string(cell.ColId)], cell)
+		} else {
+			cells[string(cell.ColId)] = []*Cell{cell}
+		}
 	}
 
 	return cells, nil
@@ -156,31 +201,31 @@ func newRethinkCell(cell *Cell) (*rethinkCell, error) {
 	}
 	return &rethinkCell{
 		ID:    id,
-		RowId: string(cell.RowId),
-		ColId: string(cell.ColId),
-		VerId: string(int64ToBytes(cell.VerId.Int64())),
-		Data:  string(cell.Data),
+		RowId: cell.RowId,
+		ColId: cell.ColId,
+		VerId: int64ToBytes(cell.VerId.Int64()),
+		Data:  cell.Data,
 	}, nil
 }
 
-func buildRethinkId(rowId, colId []byte, verId *big.Int) (string, error) {
-	w := bytes.NewBufferString("")
+func buildRethinkId(rowId, colId []byte, verId *big.Int) ([]byte, error) {
+	w := bytes.NewBuffer([]byte{})
 	encoder := base64.NewEncoder(base64.StdEncoding, w)
 	if _, err := encoder.Write(rowId); err != nil {
-		return "", err
+		return nil, err
 	}
 	w.Write([]byte("-"))
 	if _, err := encoder.Write(colId); err != nil {
-		return "", err
+		return nil, err
 	}
 	w.Write([]byte("-"))
 	if _, err := encoder.Write(int64ToBytes(verId.Int64())); err != nil {
-		return "", err
+		return nil, err
 	}
 	if err := encoder.Close(); err != nil {
-		return "", err
+		return nil, err
 	}
-	return w.String(), nil
+	return w.Bytes(), nil
 }
 
 // Converts x to zero-padded byte array. Values are shifted so that smallest int64 becomes

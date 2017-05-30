@@ -1,6 +1,7 @@
 package meddb
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
