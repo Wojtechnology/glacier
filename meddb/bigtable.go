@@ -52,34 +52,25 @@ func (bt *MemoryBigtable) Put(tableName []byte, op *PutOp) error {
 	// Fill in missing verIds with current time in ms
 	op.fillVer(curTimeMillis())
 
-	toAdd := op.cells()
-	// Find indexes after which the cell should be added
-	idxs := make([]int, len(toAdd))
-	for i, cell := range toAdd {
-		col, ok := row.cols[string(cell.ColId)]
-		if ok {
-			idxs[i] = findCell(col, cell.VerId.Int64())
-			// If this verId already exists, return error
-			if idxs[i] < len(col) && col[idxs[i]].VerId.Cmp(cell.VerId) == 0 {
-				return &VerIdAlreadyExists{VerId: cell.VerId}
-			}
-		}
-	}
-
-	// Insert the cells at found indexes
-	for i, cell := range toAdd {
+	for _, cell := range op.cells() {
 		colString := string(cell.ColId)
 		col, ok := row.cols[colString]
 		if ok {
-			// Add space for one more element
-			row.cols[colString] = append(col, nil)
-			col = row.cols[colString]
-			// Shift tail elements by 1
-			for j := len(col) - 1; j > idxs[i]; j-- {
-				col[j] = col[j-1]
+			idx := findCell(col, cell.VerId.Int64())
+			// If this verId already exists, return error
+			if idx < len(col) && col[idx].VerId.Cmp(cell.VerId) == 0 {
+				col[idx] = cell.Clone()
+			} else {
+				// Add space for one more element
+				row.cols[colString] = append(col, nil)
+				col = row.cols[colString]
+				// Shift tail elements by 1
+				for i := len(col) - 1; i > idx; i-- {
+					col[i] = col[i-1]
+				}
+				// Insert actual cell
+				col[idx] = cell.Clone()
 			}
-			// Insert actual cell
-			col[idxs[i]] = cell.Clone()
 		} else {
 			row.cols[colString] = []*Cell{cell.Clone()}
 		}

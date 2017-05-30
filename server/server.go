@@ -48,7 +48,7 @@ func main() {
 		panic(err)
 	}
 
-	res, err := db.Get([]byte("HELLO"), meddb.NewGetOpLimit(rowId, [][]byte{colId, []byte("HEYYOO")}, 3))
+	res, err := db.Get([]byte("HELLO"), meddb.NewGetOp(rowId, [][]byte{colId, []byte("HEYYOO")}))
 	if err != nil {
 		panic(err)
 	}

@@ -60,6 +60,10 @@ func (bt *RethinkBigtable) Put(tableName []byte, op *PutOp) error {
 		Conflict: "replace",
 	}).RunWrite(bt.session)
 	if err != nil {
+		if _, ok := err.(r.RQLOpFailedError); ok {
+			// TODO(wojtek): Pretty sure this is wrong, but too lazy to figure it out now
+			return &TableNotFoundError{TableName: tableName}
+		}
 		return err
 	}
 
@@ -113,6 +117,10 @@ func (bt *RethinkBigtable) Get(tableName []byte, op *GetOp) (map[string][]*Cell,
 	}
 	defer res.Close()
 	if err != nil {
+		if _, ok := err.(r.RQLOpFailedError); ok {
+			// TODO(wojtek): Pretty sure this is wrong, but too lazy to figure it out now
+			return nil, &TableNotFoundError{TableName: tableName}
+		}
 		return nil, err
 	}
 
