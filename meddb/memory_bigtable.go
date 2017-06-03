@@ -5,6 +5,7 @@ import (
 	"sync"
 )
 
+// In memory bigtable db mainly meant for testing
 type MemoryBigtable struct {
 	tables map[string]*memoryTable
 	lock   sync.RWMutex
