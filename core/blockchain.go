@@ -15,7 +15,7 @@ type Blockchain struct {
 }
 
 func NewBlockchain(db meddb.BlockchainDB, me *Node) *Blockchain {
-	return &Blockchain{db: db, me: me}
+	return &Blockchain{db: db, me: me, federation: []*Node{&Node{PubKey: []byte{42}}}}
 }
 
 // --------------
