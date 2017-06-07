@@ -4,7 +4,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/wojtechnology/glacier/test"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBytesHash(t *testing.T) {
@@ -14,7 +14,7 @@ func TestBytesHash(t *testing.T) {
 	var expected [HashLength]byte
 	copy(expected[HashLength-len(b):], b)
 
-	test.AssertBytesEqual(t, expected[:], BytesToHash(b).Bytes())
+	assert.Equal(t, expected[:], BytesToHash(b).Bytes())
 }
 
 func TestStringHash(t *testing.T) {
@@ -25,10 +25,10 @@ func TestStringHash(t *testing.T) {
 	copy(expectedB[HashLength-len(s):], []byte(s))
 	expected := string(expectedB[:])
 
-	test.AssertEqual(t, expected, StringToHash(s).String())
+	assert.Equal(t, expected, StringToHash(s).String())
 }
 
 func TestBigHash(t *testing.T) {
 	i := big.NewInt(100)
-	test.AssertEqual(t, i, BigToHash(i).Big())
+	assert.Equal(t, i, BigToHash(i).Big())
 }

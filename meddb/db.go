@@ -25,3 +25,33 @@ type Transaction struct {
 	CellAddress  *CellAddress
 	Data         []byte
 }
+
+func (tx *Transaction) Clone() *Transaction {
+	var lastAssigned *big.Int = nil
+	if tx.LastAssigned != nil {
+		lastAssigned = big.NewInt(tx.LastAssigned.Int64())
+	}
+
+	var cellAddress *CellAddress = nil
+	if tx.CellAddress != nil {
+		var verId *big.Int = nil
+		if tx.CellAddress.VerId != nil {
+			verId = tx.CellAddress.VerId
+		}
+
+		cellAddress = &CellAddress{
+			TableName: tx.CellAddress.TableName,
+			RowId:     tx.CellAddress.RowId,
+			ColId:     tx.CellAddress.ColId,
+			VerId:     verId,
+		}
+	}
+
+	return &Transaction{
+		Hash:         tx.Hash,
+		AssignedTo:   tx.AssignedTo,
+		LastAssigned: lastAssigned,
+		CellAddress:  cellAddress,
+		Data:         tx.Data,
+	}
+}

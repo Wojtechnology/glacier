@@ -7,83 +7,86 @@ import (
 	r "gopkg.in/gorethink/gorethink.v3"
 )
 
-const rethinkTableName = "HELLO"
+const (
+	rethinkBigtableDB = "test_bigtable"
+	rethinkTableName  = "HELLO"
+)
 
 func init() {
 	session, err := r.Connect(r.ConnectOpts{Addresses: []string{"127.0.0.1"}})
 	if err != nil {
 		panic(err)
 	}
-	r.DBDrop("test").Run(session)
-	r.DBCreate("test").Run(session)
-	r.DB("test").TableCreate(rethinkTableName).RunWrite(session)
-	r.DB("test").Table(rethinkTableName).IndexCreate("row_id").RunWrite(session)
-	r.DB("test").Table(rethinkTableName).IndexWait().Run(session)
+	r.DBDrop(rethinkBigtableDB).Run(session)
+	r.DBCreate(rethinkBigtableDB).Run(session)
+	r.DB(rethinkBigtableDB).TableCreate(rethinkTableName).RunWrite(session)
+	r.DB(rethinkBigtableDB).Table(rethinkTableName).IndexCreate("row_id").RunWrite(session)
+	r.DB(rethinkBigtableDB).Table(rethinkTableName).IndexWait().Run(session)
 }
 
 func TestRethinkPutGet(t *testing.T) {
-	bt, err := NewRethinkBigtable([]string{"127.0.0.1"}, "test")
+	bt, err := NewRethinkBigtable([]string{"127.0.0.1"}, rethinkBigtableDB)
 	assert.Nil(t, err)
 	defer rethinkClearTable(bt, rethinkTableName)
 	testPutGet(t, bt, []byte(rethinkTableName))
 }
 
 func TestRethinkPutGetEmpty(t *testing.T) {
-	bt, err := NewRethinkBigtable([]string{"127.0.0.1"}, "test")
+	bt, err := NewRethinkBigtable([]string{"127.0.0.1"}, rethinkBigtableDB)
 	assert.Nil(t, err)
 	defer rethinkClearTable(bt, rethinkTableName)
 	testPutGetEmpty(t, bt, []byte(rethinkTableName))
 }
 
 func TestRethinkPutGetVer(t *testing.T) {
-	bt, err := NewRethinkBigtable([]string{"127.0.0.1"}, "test")
+	bt, err := NewRethinkBigtable([]string{"127.0.0.1"}, rethinkBigtableDB)
 	assert.Nil(t, err)
 	defer rethinkClearTable(bt, rethinkTableName)
 	testPutGetVer(t, bt, []byte(rethinkTableName))
 }
 
 func TestRethinkPutOverwrite(t *testing.T) {
-	bt, err := NewRethinkBigtable([]string{"127.0.0.1"}, "test")
+	bt, err := NewRethinkBigtable([]string{"127.0.0.1"}, rethinkBigtableDB)
 	assert.Nil(t, err)
 	defer rethinkClearTable(bt, rethinkTableName)
 	testPutOverwrite(t, bt, []byte(rethinkTableName))
 }
 
 func TestRethinkGetExact(t *testing.T) {
-	bt, err := NewRethinkBigtable([]string{"127.0.0.1"}, "test")
+	bt, err := NewRethinkBigtable([]string{"127.0.0.1"}, rethinkBigtableDB)
 	assert.Nil(t, err)
 	defer rethinkClearTable(bt, rethinkTableName)
 	testGetExact(t, bt, []byte(rethinkTableName))
 }
 
 func TestRethinkGetLimit(t *testing.T) {
-	bt, err := NewRethinkBigtable([]string{"127.0.0.1"}, "test")
+	bt, err := NewRethinkBigtable([]string{"127.0.0.1"}, rethinkBigtableDB)
 	assert.Nil(t, err)
 	defer rethinkClearTable(bt, rethinkTableName)
 	testGetLimit(t, bt, []byte(rethinkTableName))
 }
 
 func TestRethinkGetRange(t *testing.T) {
-	bt, err := NewRethinkBigtable([]string{"127.0.0.1"}, "test")
+	bt, err := NewRethinkBigtable([]string{"127.0.0.1"}, rethinkBigtableDB)
 	assert.Nil(t, err)
 	defer rethinkClearTable(bt, rethinkTableName)
 	testGetRange(t, bt, []byte(rethinkTableName))
 }
 
 func TestRethinkGetTableNotFound(t *testing.T) {
-	bt, err := NewRethinkBigtable([]string{"127.0.0.1"}, "test")
+	bt, err := NewRethinkBigtable([]string{"127.0.0.1"}, rethinkBigtableDB)
 	assert.Nil(t, err)
 	testGetTableNotFound(t, bt)
 }
 
 func TestRethinkPutTableNotFound(t *testing.T) {
-	bt, err := NewRethinkBigtable([]string{"127.0.0.1"}, "test")
+	bt, err := NewRethinkBigtable([]string{"127.0.0.1"}, rethinkBigtableDB)
 	assert.Nil(t, err)
 	testPutTableNotFound(t, bt)
 }
 
 func TestRethinkCreateTableAlreadyExists(t *testing.T) {
-	bt, err := NewRethinkBigtable([]string{"127.0.0.1"}, "test")
+	bt, err := NewRethinkBigtable([]string{"127.0.0.1"}, rethinkBigtableDB)
 	assert.Nil(t, err)
 	testCreateTableAlreadyExists(t, bt)
 }
@@ -153,5 +156,5 @@ func TestBytesToInt64Zero(t *testing.T) {
 }
 
 func rethinkClearTable(bt *RethinkBigtable, tableName string) {
-	r.DB("test").Table(tableName).Delete().Run(bt.session)
+	r.DB(rethinkBigtableDB).Table(tableName).Delete().Run(bt.session)
 }

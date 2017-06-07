@@ -27,7 +27,7 @@ func (bc *Blockchain) AddTransaction(tx *Transaction) error {
 	assignedTo := bc.randomAssignee(now).PubKey
 	lastAssigned := big.NewInt(now)
 
-	if err := bc.db.WriteTransaction(tx.ToDBTransaction(assignedTo, lastAssigned)); err != nil {
+	if err := bc.db.WriteTransaction(tx.toDBTransaction(assignedTo, lastAssigned)); err != nil {
 		return err
 	}
 

@@ -26,6 +26,6 @@ func (db *MemoryBlockchainDB) WriteTransaction(tx *Transaction) error {
 	db.backlogLock.Lock()
 	defer db.backlogLock.Unlock()
 
-	db.backlogTable[string(tx.Hash)] = tx
+	db.backlogTable[string(tx.Hash)] = tx.Clone()
 	return nil
 }

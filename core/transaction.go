@@ -27,14 +27,14 @@ func (tx *Transaction) Hash() Hash {
 	return rlpHash(tx)
 }
 
-func (tx *Transaction) ToDBTransaction(
+func (tx *Transaction) toDBTransaction(
 	assignedTo []byte, lastAssigned *big.Int) *meddb.Transaction {
 	// TODO(wojtek): Maybe make copies here
 	return &meddb.Transaction{
 		Hash:         tx.Hash().Bytes(),
 		AssignedTo:   assignedTo,
 		LastAssigned: lastAssigned,
-		CellAddress:  tx.CellAddress.ToDBCellAddress(),
+		CellAddress:  tx.CellAddress.toDBCellAddress(),
 		Data:         tx.Data,
 	}
 }
@@ -43,11 +43,16 @@ func (tx *Transaction) ToDBTransaction(
 // CellAddress API
 // ---------------
 
-func (ca *CellAddress) ToDBCellAddress() *meddb.CellAddress {
+func (ca *CellAddress) toDBCellAddress() *meddb.CellAddress {
+	var verId *big.Int = nil
+	if ca.VerId != nil {
+		verId = big.NewInt(ca.VerId.Int64())
+	}
+
 	return &meddb.CellAddress{
 		TableName: ca.TableName,
 		RowId:     ca.RowId,
 		ColId:     ca.ColId,
-		VerId:     ca.VerId,
+		VerId:     verId,
 	}
 }
