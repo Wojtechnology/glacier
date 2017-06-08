@@ -156,5 +156,5 @@ func TestBytesToInt64Zero(t *testing.T) {
 }
 
 func rethinkClearTable(bt *RethinkBigtable, tableName string) {
-	r.DB(rethinkBigtableDB).Table(tableName).Delete().Run(bt.session)
+	r.DB(rethinkBigtableDB).Table(tableName).Delete().RunWrite(bt.session)
 }

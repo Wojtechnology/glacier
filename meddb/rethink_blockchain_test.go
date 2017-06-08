@@ -36,15 +36,10 @@ func TestRethinkWriteTransaction(t *testing.T) {
 	err := db.WriteTransaction(tx)
 	assert.Nil(t, err)
 
-	cur, err := r.DB(rethinkBlockchainDB).Table(rethinkBacklogName).Run(db.session)
-	assert.Nil(t, err)
+	txs := rethinkGetBacklog(t, db)
 
-	var res []*rethinkTransaction
-	err = cur.All(&res)
-	assert.Nil(t, err)
-
-	assert.Equal(t, 1, len(res))
-	assert.Equal(t, tx, fromRethinkTransaction(res[0]))
+	assert.Equal(t, 1, len(txs))
+	assert.Equal(t, tx, txs[0])
 }
 
 func TestRethinkGetAssignedTransactions(t *testing.T) {
@@ -57,17 +52,27 @@ func TestRethinkGetAssignedTransactions(t *testing.T) {
 	otherTx.Hash = []byte{22}
 	otherTx.AssignedTo = pubKey
 
-	_, err := r.DB(rethinkBlockchainDB).Table(rethinkBacklogName).Insert(
-		newRethinkTransaction(tx),
-	).RunWrite(db.session)
-	assert.Nil(t, err)
-	_, err = r.DB(rethinkBlockchainDB).Table(rethinkBacklogName).Insert(
-		newRethinkTransaction(otherTx),
-	).RunWrite(db.session)
-	assert.Nil(t, err)
+	rethinkWriteToBacklog(t, db, []*Transaction{tx, otherTx})
 
 	txs, err := db.GetAssignedTransactions(pubKey)
 	assert.Nil(t, err)
+	assert.Equal(t, 1, len(txs))
+	assert.Equal(t, otherTx, txs[0])
+}
+
+func TestRethinkDeleteTransactions(t *testing.T) {
+	db := getRethinkDB(t)
+	tx := getTestTransaction()
+	otherTx := getTestTransaction()
+	otherTx.Hash = []byte{22}
+
+	rethinkWriteToBacklog(t, db, []*Transaction{tx, otherTx})
+
+	err := db.DeleteTransactions([]*Transaction{tx})
+	assert.Nil(t, err)
+
+	txs := rethinkGetBacklog(t, db)
+
 	assert.Equal(t, 1, len(txs))
 	assert.Equal(t, otherTx, txs[0])
 }
@@ -91,6 +96,28 @@ func getRethinkDB(t *testing.T) *RethinkBlockchainDB {
 	return db
 }
 
+func rethinkWriteToBacklog(t *testing.T, db *RethinkBlockchainDB, txs []*Transaction) {
+	for _, tx := range txs {
+		_, err := db.backlogTable().Insert(newRethinkTransaction(tx)).RunWrite(db.session)
+		assert.Nil(t, err)
+	}
+}
+
+func rethinkGetBacklog(t *testing.T, db *RethinkBlockchainDB) []*Transaction {
+	cur, err := db.backlogTable().Run(db.session)
+	assert.Nil(t, err)
+
+	var res []*rethinkTransaction
+	err = cur.All(&res)
+	assert.Nil(t, err)
+
+	txs := make([]*Transaction, len(res))
+	for i, tx := range res {
+		txs[i] = fromRethinkTransaction(tx)
+	}
+	return txs
+}
+
 func rethinkDeleteBacklog(db *RethinkBlockchainDB) {
-	r.DB(rethinkBlockchainDB).Table(rethinkBacklogName).Delete().Run(db.session)
+	r.DB(rethinkBlockchainDB).Table(rethinkBacklogName).Delete().RunWrite(db.session)
 }

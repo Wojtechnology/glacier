@@ -47,3 +47,14 @@ func (db *MemoryBlockchainDB) GetAssignedTransactions(pubKey []byte) ([]*Transac
 
 	return txs, nil
 }
+
+func (db *MemoryBlockchainDB) DeleteTransactions(txs []*Transaction) error {
+	db.backlogLock.Lock()
+	defer db.backlogLock.Unlock()
+
+	for _, tx := range txs {
+		delete(db.backlogTable, string(tx.Hash))
+	}
+
+	return nil
+}

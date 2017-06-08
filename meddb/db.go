@@ -9,6 +9,8 @@ type BlockchainDB interface {
 	WriteTransaction(*Transaction) error
 	// Returns transactions currently assigned to given node
 	GetAssignedTransactions([]byte) ([]*Transaction, error)
+	// Deletes given transactions
+	DeleteTransactions([]*Transaction) error
 }
 
 type Node struct {

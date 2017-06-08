@@ -17,7 +17,6 @@ func TestMemoryWriteTransaction(t *testing.T) {
 
 	err := db.WriteTransaction(tx)
 	assert.Nil(t, err)
-
 	assert.Equal(t, 1, len(db.backlogTable))
 	assert.Equal(t, tx, db.backlogTable[string(tx.Hash)])
 }
@@ -37,6 +36,22 @@ func TestMemoryGetAssignedTransactions(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(txs))
 	assert.Equal(t, otherTx, txs[0])
+}
+
+func TestMemoryDeleteTransactions(t *testing.T) {
+	db := getMemoryDB(t)
+	tx := getTestTransaction()
+	otherTx := getTestTransaction()
+	otherTx.Hash = []byte{22}
+
+	db.backlogTable[string(tx.Hash)] = tx.Clone()
+	db.backlogTable[string(otherTx.Hash)] = otherTx.Clone()
+
+	err := db.DeleteTransactions([]*Transaction{tx})
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(db.backlogTable))
+	_, ok := db.backlogTable[string(tx.Hash)]
+	assert.False(t, ok)
 }
 
 // -------

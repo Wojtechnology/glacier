@@ -76,7 +76,7 @@ func (db *RethinkBlockchainDB) WriteTransaction(tx *Transaction) error {
 	defer db.lock.Unlock()
 
 	rethinkTx := newRethinkTransaction(tx)
-	_, err := r.DB(db.database).Table(rethinkBacklogName).Insert(rethinkTx, r.InsertOpts{
+	_, err := db.backlogTable().Insert(rethinkTx, r.InsertOpts{
 		Conflict: "replace",
 	}).RunWrite(db.session)
 	if err != nil {
@@ -90,9 +90,7 @@ func (db *RethinkBlockchainDB) GetAssignedTransactions(pubKey []byte) ([]*Transa
 	db.lock.Lock()
 	defer db.lock.Unlock()
 
-	res, err := r.DB(db.database).Table(rethinkBacklogName).GetAllByIndex(
-		"assigned_to", pubKey,
-	).Run(db.session)
+	res, err := db.backlogTable().GetAllByIndex("assigned_to", pubKey).Run(db.session)
 	if err != nil {
 		return nil, err
 	}
@@ -109,9 +107,30 @@ func (db *RethinkBlockchainDB) GetAssignedTransactions(pubKey []byte) ([]*Transa
 	return txs, nil
 }
 
+func (db *RethinkBlockchainDB) DeleteTransactions(txs []*Transaction) error {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	ids := make([]interface{}, len(txs))
+	for i, tx := range txs {
+		ids[i] = tx.Hash
+	}
+
+	_, err := db.backlogTable().GetAll(ids...).Delete().RunWrite(db.session)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // -------
 // Helpers
 // -------
+
+func (db *RethinkBlockchainDB) backlogTable() r.Term {
+	return r.DB(db.database).Table(rethinkBacklogName)
+}
 
 func newRethinkTransaction(tx *Transaction) *rethinkTransaction {
 	var lastAssigned []byte = nil
