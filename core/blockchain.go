@@ -34,6 +34,32 @@ func (bc *Blockchain) AddTransaction(tx *Transaction) error {
 	return nil
 }
 
+func (bc *Blockchain) BuildBlock() error {
+	dbTxs, err := bc.db.GetAssignedTransactions(bc.me.PubKey)
+	if err != nil {
+		return err
+	}
+
+	txs := make([]*Transaction, len(dbTxs))
+	for i, dbTx := range dbTxs {
+		txs[i] = fromDBTransaction(dbTx)
+	}
+
+	validTxs := make([]*Transaction, 0)
+	invalidTxs := make([]*Transaction, 0)
+	for _, tx := range txs {
+		if tx.Valid() {
+			validTxs = append(validTxs, tx)
+		} else {
+			invalidTxs = append(validTxs, tx)
+		}
+	}
+
+	// Delete invalid transactions
+	// Create block out of valid transactions
+	return nil
+}
+
 // -------
 // Helpers
 // -------

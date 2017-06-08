@@ -174,7 +174,7 @@ func (bt *RethinkBigtable) CreateTable(tableName []byte) error {
 	bt.lock.Lock()
 	defer bt.lock.Unlock()
 
-	_, err := r.DB(bt.database).TableCreate(string(tableName)).Run(bt.session)
+	_, err := r.DB(bt.database).TableCreate(string(tableName)).RunWrite(bt.session)
 	if err != nil {
 		if _, ok := err.(r.RQLOpFailedError); ok {
 			return &TableAlreadyExists{TableName: tableName}

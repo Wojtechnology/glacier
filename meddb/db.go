@@ -3,8 +3,12 @@ package meddb
 import "math/big"
 
 type BlockchainDB interface {
-	SetupTables() error                  // First time setup to create required tables and indices
-	WriteTransaction(*Transaction) error // Writes transaction to backlog
+	// First time setup to create required tables and indices
+	SetupTables() error
+	// Writes transaction to backlog
+	WriteTransaction(*Transaction) error
+	// Returns transactions currently assigned to given node
+	GetAssignedTransactions([]byte) ([]*Transaction, error)
 }
 
 type Node struct {

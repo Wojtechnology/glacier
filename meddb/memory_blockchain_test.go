@@ -22,6 +22,23 @@ func TestMemoryWriteTransaction(t *testing.T) {
 	assert.Equal(t, tx, db.backlogTable[string(tx.Hash)])
 }
 
+func TestMemoryGetAssignedTransactions(t *testing.T) {
+	db := getMemoryDB(t)
+	pubKey := []byte{69}
+	tx := getTestTransaction()
+	otherTx := getTestTransaction()
+	otherTx.Hash = []byte{22}
+	otherTx.AssignedTo = pubKey
+
+	db.backlogTable[string(tx.Hash)] = tx.Clone()
+	db.backlogTable[string(otherTx.Hash)] = otherTx.Clone()
+
+	txs, err := db.GetAssignedTransactions(pubKey)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(txs))
+	assert.Equal(t, otherTx, txs[0])
+}
+
 // -------
 // Helpers
 // -------

@@ -1,6 +1,7 @@
 package meddb
 
 import (
+	"math/big"
 	"sync"
 
 	r "gopkg.in/gorethink/gorethink.v3"
@@ -26,6 +27,7 @@ type rethinkTransaction struct {
 	AssignedTo   []byte              `gorethink:"assigned_to"`
 	LastAssigned []byte              `gorethink:"last_assigned"`
 	CellAddress  *rethinkCellAddress `gorethink:"cell_address"`
+	Data         []byte              `gorethink:"data"`
 }
 
 // ----------------------
@@ -47,10 +49,22 @@ func (db *RethinkBlockchainDB) SetupTables() error {
 	db.lock.Lock()
 	defer db.lock.Unlock()
 
-	if _, err := r.DBCreate(db.database).Run(db.session); err != nil {
+	_, err := r.DBCreate(db.database).RunWrite(db.session)
+	if err != nil {
 		return err
 	}
-	if _, err := r.DB(db.database).TableCreate(rethinkBacklogName).Run(db.session); err != nil {
+	_, err = r.DB(db.database).TableCreate(rethinkBacklogName).RunWrite(db.session)
+	if err != nil {
+		return err
+	}
+	_, err = r.DB(db.database).Table(rethinkBacklogName).IndexCreate(
+		"assigned_to",
+	).RunWrite(db.session)
+	if err != nil {
+		return err
+	}
+	_, err = r.DB(db.database).Table(rethinkBacklogName).IndexWait().Run(db.session)
+	if err != nil {
 		return err
 	}
 
@@ -70,6 +84,29 @@ func (db *RethinkBlockchainDB) WriteTransaction(tx *Transaction) error {
 	}
 
 	return nil
+}
+
+func (db *RethinkBlockchainDB) GetAssignedTransactions(pubKey []byte) ([]*Transaction, error) {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	res, err := r.DB(db.database).Table(rethinkBacklogName).GetAllByIndex(
+		"assigned_to", pubKey,
+	).Run(db.session)
+	if err != nil {
+		return nil, err
+	}
+
+	var rows []*rethinkTransaction
+	if err := res.All(&rows); err != nil {
+		return nil, err
+	}
+
+	txs := make([]*Transaction, len(rows))
+	for i, row := range rows {
+		txs[i] = fromRethinkTransaction(row)
+	}
+	return txs, nil
 }
 
 // -------
@@ -101,5 +138,36 @@ func newRethinkTransaction(tx *Transaction) *rethinkTransaction {
 		AssignedTo:   tx.AssignedTo,
 		LastAssigned: lastAssigned,
 		CellAddress:  cellAddress,
+		Data:         tx.Data,
 	}
+}
+
+func fromRethinkTransaction(tx *rethinkTransaction) *Transaction {
+	var lastAssigned *big.Int = nil
+	if tx.LastAssigned != nil {
+		lastAssigned = big.NewInt(bytesToInt64(tx.LastAssigned))
+	}
+	var cellAddress *CellAddress = nil
+	if tx.CellAddress != nil {
+		var verId *big.Int = nil
+		if tx.CellAddress.VerId != nil {
+			verId = big.NewInt(bytesToInt64(tx.CellAddress.VerId))
+		}
+
+		cellAddress = &CellAddress{
+			TableName: tx.CellAddress.TableName,
+			RowId:     tx.CellAddress.RowId,
+			ColId:     tx.CellAddress.ColId,
+			VerId:     verId,
+		}
+	}
+
+	return &Transaction{
+		Hash:         tx.Hash,
+		AssignedTo:   tx.AssignedTo,
+		LastAssigned: lastAssigned,
+		CellAddress:  cellAddress,
+		Data:         tx.Data,
+	}
+
 }
