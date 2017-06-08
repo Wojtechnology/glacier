@@ -45,13 +45,11 @@ func (bc *Blockchain) BuildBlock() error {
 		txs[i] = fromDBTransaction(dbTx)
 	}
 
-	validTxs := make([]*Transaction, 0)
-	invalidTxs := make([]*Transaction, 0)
+	_ = make([]*Transaction, 0)
+	_ = make([]*Transaction, 0)
 	for _, tx := range txs {
 		if tx.Valid() {
-			validTxs = append(validTxs, tx)
 		} else {
-			invalidTxs = append(validTxs, tx)
 		}
 	}
 

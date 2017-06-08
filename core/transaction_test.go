@@ -4,8 +4,9 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/wojtechnology/glacier/meddb"
-	"github.com/wojtechnology/glacier/test"
 )
 
 func TestToDBTransaction(t *testing.T) {
@@ -37,11 +38,13 @@ func TestToDBTransaction(t *testing.T) {
 		Data:         []byte{69},
 	}
 	actual := tx.toDBTransaction(assignedTo, lastAssigned)
+	assert.Equal(t, expected, actual)
 
-	test.AssertEqual(t, expected, actual)
+	back := fromDBTransaction(actual)
+	assert.Equal(t, tx, back)
 }
 
-func TestToDBTransactionEmpty(t *testing.T) {
+func TestDBTransactionMapperEmpty(t *testing.T) {
 	tx := &Transaction{
 		CellAddress: &CellAddress{},
 	}
@@ -58,6 +61,8 @@ func TestToDBTransactionEmpty(t *testing.T) {
 		LastAssigned: lastAssigned,
 	}
 	actual := tx.toDBTransaction(assignedTo, lastAssigned)
+	assert.Equal(t, expected, actual)
 
-	test.AssertEqual(t, expected, actual)
+	back := fromDBTransaction(actual)
+	assert.Equal(t, tx, back)
 }

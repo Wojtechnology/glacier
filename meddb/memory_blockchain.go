@@ -9,6 +9,8 @@ import (
 type MemoryBlockchainDB struct {
 	backlogTable map[string]*Transaction
 	backlogLock  sync.RWMutex
+	blockTable   map[string]*Block
+	blockLock    sync.RWMutex
 }
 
 // ----------------------
@@ -18,6 +20,7 @@ type MemoryBlockchainDB struct {
 func NewMemoryBlockchainDB() (*MemoryBlockchainDB, error) {
 	return &MemoryBlockchainDB{
 		backlogTable: make(map[string]*Transaction),
+		blockTable:   make(map[string]*Block),
 	}, nil
 }
 
@@ -56,5 +59,13 @@ func (db *MemoryBlockchainDB) DeleteTransactions(txs []*Transaction) error {
 		delete(db.backlogTable, string(tx.Hash))
 	}
 
+	return nil
+}
+
+func (db *MemoryBlockchainDB) WriteBlock(b *Block) error {
+	db.blockLock.Lock()
+	defer db.blockLock.Unlock()
+
+	db.blockTable[string(b.Hash)] = b.Clone()
 	return nil
 }

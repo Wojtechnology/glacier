@@ -54,6 +54,16 @@ func TestMemoryDeleteTransactions(t *testing.T) {
 	assert.False(t, ok)
 }
 
+func TestMemoryWriteBlock(t *testing.T) {
+	db := getMemoryDB(t)
+	b := getTestBlock()
+
+	err := db.WriteBlock(b)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(db.blockTable))
+	assert.Equal(t, b, db.blockTable[string(b.Hash)])
+}
+
 // -------
 // Helpers
 // -------
@@ -76,5 +86,14 @@ func getTestTransaction() *Transaction {
 			VerId:     big.NewInt(234),
 		},
 		Data: []byte{82},
+	}
+}
+
+func getTestBlock() *Block {
+	return &Block{
+		Hash:         []byte{132},
+		Transactions: [][]byte{[]byte{142, 152}},
+		CreatedAt:    big.NewInt(162),
+		Creator:      []byte{172},
 	}
 }

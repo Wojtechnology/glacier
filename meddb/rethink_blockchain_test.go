@@ -77,6 +77,20 @@ func TestRethinkDeleteTransactions(t *testing.T) {
 	assert.Equal(t, otherTx, txs[0])
 }
 
+func TestRethinkWriteBlock(t *testing.T) {
+	db := getRethinkDB(t)
+	defer rethinkDeleteBlocks(db)
+	b := getTestBlock()
+
+	err := db.WriteBlock(b)
+	assert.Nil(t, err)
+
+	bs := rethinkGetBlocks(t, db)
+
+	assert.Equal(t, 1, len(bs))
+	assert.Equal(t, b, bs[0])
+}
+
 // ------------
 // Test Helpers
 // ------------
@@ -84,6 +98,11 @@ func TestRethinkDeleteTransactions(t *testing.T) {
 func TestRethinkTransactionMapper(t *testing.T) {
 	tx := getTestTransaction()
 	assert.Equal(t, tx, fromRethinkTransaction(newRethinkTransaction(tx)))
+}
+
+func TestRethinkBlockMapper(t *testing.T) {
+	tx := getTestBlock()
+	assert.Equal(t, tx, fromRethinkBlock(newRethinkBlock(tx)))
 }
 
 // -------
@@ -118,6 +137,25 @@ func rethinkGetBacklog(t *testing.T, db *RethinkBlockchainDB) []*Transaction {
 	return txs
 }
 
+func rethinkGetBlocks(t *testing.T, db *RethinkBlockchainDB) []*Block {
+	cur, err := db.blockTable().Run(db.session)
+	assert.Nil(t, err)
+
+	var res []*rethinkBlock
+	err = cur.All(&res)
+	assert.Nil(t, err)
+
+	bs := make([]*Block, len(res))
+	for i, b := range res {
+		bs[i] = fromRethinkBlock(b)
+	}
+	return bs
+}
+
 func rethinkDeleteBacklog(db *RethinkBlockchainDB) {
-	r.DB(rethinkBlockchainDB).Table(rethinkBacklogName).Delete().RunWrite(db.session)
+	db.backlogTable().Delete().RunWrite(db.session)
+}
+
+func rethinkDeleteBlocks(db *RethinkBlockchainDB) {
+	db.blockTable().Delete().RunWrite(db.session)
 }

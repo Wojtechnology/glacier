@@ -5,12 +5,14 @@ import "math/big"
 type BlockchainDB interface {
 	// First time setup to create required tables and indices
 	SetupTables() error
-	// Writes transaction to backlog
+	// Writes transaction to backlog table
 	WriteTransaction(*Transaction) error
-	// Returns transactions currently assigned to given node
+	// Returns transactions currently assigned to given node from backlog table
 	GetAssignedTransactions([]byte) ([]*Transaction, error)
-	// Deletes given transactions
+	// Deletes given transactions from backlog table
 	DeleteTransactions([]*Transaction) error
+	// Writes block to block table
+	WriteBlock(*Block) error
 }
 
 type Node struct {
@@ -30,6 +32,13 @@ type Transaction struct {
 	LastAssigned *big.Int
 	CellAddress  *CellAddress
 	Data         []byte
+}
+
+type Block struct {
+	Hash         []byte
+	Transactions [][]byte
+	CreatedAt    *big.Int
+	Creator      []byte
 }
 
 func (tx *Transaction) Clone() *Transaction {
@@ -59,5 +68,19 @@ func (tx *Transaction) Clone() *Transaction {
 		LastAssigned: lastAssigned,
 		CellAddress:  cellAddress,
 		Data:         tx.Data,
+	}
+}
+
+func (b *Block) Clone() *Block {
+	var createdAt *big.Int = nil
+	if b.CreatedAt != nil {
+		createdAt = big.NewInt(b.CreatedAt.Int64())
+	}
+
+	return &Block{
+		Hash:         b.Hash,
+		Transactions: b.Transactions,
+		CreatedAt:    createdAt,
+		Creator:      b.Creator,
 	}
 }

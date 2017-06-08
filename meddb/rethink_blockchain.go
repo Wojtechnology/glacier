@@ -7,7 +7,10 @@ import (
 	r "gopkg.in/gorethink/gorethink.v3"
 )
 
-const rethinkBacklogName = "backlog"
+const (
+	rethinkBacklogName = "backlog"
+	rethinkBlockName   = "block"
+)
 
 type RethinkBlockchainDB struct {
 	session  *r.Session
@@ -28,6 +31,13 @@ type rethinkTransaction struct {
 	LastAssigned []byte              `gorethink:"last_assigned"`
 	CellAddress  *rethinkCellAddress `gorethink:"cell_address"`
 	Data         []byte              `gorethink:"data"`
+}
+
+type rethinkBlock struct {
+	Hash         []byte   `gorethink:"id"`
+	Transactions [][]byte `gorethink:"transactions"`
+	CreatedAt    []byte   `gorethink:"created_at"`
+	Creator      []byte   `gorethink:"creator"`
 }
 
 // ----------------------
@@ -54,6 +64,10 @@ func (db *RethinkBlockchainDB) SetupTables() error {
 		return err
 	}
 	_, err = r.DB(db.database).TableCreate(rethinkBacklogName).RunWrite(db.session)
+	if err != nil {
+		return err
+	}
+	_, err = r.DB(db.database).TableCreate(rethinkBlockName).RunWrite(db.session)
 	if err != nil {
 		return err
 	}
@@ -124,12 +138,31 @@ func (db *RethinkBlockchainDB) DeleteTransactions(txs []*Transaction) error {
 	return nil
 }
 
+func (db *RethinkBlockchainDB) WriteBlock(b *Block) error {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	rethinkB := newRethinkBlock(b)
+	_, err := db.blockTable().Insert(rethinkB, r.InsertOpts{
+		Conflict: "replace",
+	}).RunWrite(db.session)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // -------
 // Helpers
 // -------
 
 func (db *RethinkBlockchainDB) backlogTable() r.Term {
 	return r.DB(db.database).Table(rethinkBacklogName)
+}
+
+func (db *RethinkBlockchainDB) blockTable() r.Term {
+	return r.DB(db.database).Table(rethinkBlockName)
 }
 
 func newRethinkTransaction(tx *Transaction) *rethinkTransaction {
@@ -189,4 +222,32 @@ func fromRethinkTransaction(tx *rethinkTransaction) *Transaction {
 		Data:         tx.Data,
 	}
 
+}
+
+func newRethinkBlock(b *Block) *rethinkBlock {
+	var createdAt []byte = nil
+	if b.CreatedAt != nil {
+		createdAt = int64ToBytes(b.CreatedAt.Int64())
+	}
+
+	return &rethinkBlock{
+		Hash:         b.Hash,
+		Transactions: b.Transactions,
+		CreatedAt:    createdAt,
+		Creator:      b.Creator,
+	}
+}
+
+func fromRethinkBlock(b *rethinkBlock) *Block {
+	var createdAt *big.Int = nil
+	if b.CreatedAt != nil {
+		createdAt = big.NewInt(bytesToInt64(b.CreatedAt))
+	}
+
+	return &Block{
+		Hash:         b.Hash,
+		Transactions: b.Transactions,
+		CreatedAt:    createdAt,
+		Creator:      b.Creator,
+	}
 }
