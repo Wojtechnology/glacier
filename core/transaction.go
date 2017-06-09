@@ -15,8 +15,10 @@ type CellAddress struct {
 
 type Transaction struct {
 	// TODO(wojtek): signature
-	CellAddress *CellAddress
-	Data        []byte
+	AssignedTo   []byte
+	LastAssigned *big.Int
+	CellAddress  *CellAddress
+	Data         []byte
 }
 
 // ---------------
@@ -31,8 +33,12 @@ func (tx *Transaction) Valid() bool {
 	return true
 }
 
-func (tx *Transaction) toDBTransaction(
-	assignedTo []byte, lastAssigned *big.Int) *meddb.Transaction {
+func (tx *Transaction) toDBTransaction() *meddb.Transaction {
+	var lastAssigned *big.Int = nil
+	if tx.LastAssigned != nil {
+		lastAssigned = big.NewInt(tx.LastAssigned.Int64())
+	}
+
 	var cellAddress *meddb.CellAddress = nil
 	if tx.CellAddress != nil {
 		cellAddress = tx.CellAddress.toDBCellAddress()
@@ -40,7 +46,7 @@ func (tx *Transaction) toDBTransaction(
 	// TODO(wojtek): Maybe make copies here
 	return &meddb.Transaction{
 		Hash:         tx.Hash().Bytes(),
-		AssignedTo:   assignedTo,
+		AssignedTo:   tx.AssignedTo,
 		LastAssigned: lastAssigned,
 		CellAddress:  cellAddress,
 		Data:         tx.Data,
@@ -48,14 +54,21 @@ func (tx *Transaction) toDBTransaction(
 }
 
 func fromDBTransaction(tx *meddb.Transaction) *Transaction {
+	var lastAssigned *big.Int = nil
+	if tx.AssignedTo != nil {
+		lastAssigned = big.NewInt(tx.LastAssigned.Int64())
+	}
+
 	var cellAddress *CellAddress = nil
 	if tx.CellAddress != nil {
 		cellAddress = fromDBCellAddress(tx.CellAddress)
 	}
 	// TODO(wojtek): Maybe make copies here
 	return &Transaction{
-		CellAddress: cellAddress,
-		Data:        tx.Data,
+		AssignedTo:   tx.AssignedTo,
+		LastAssigned: lastAssigned,
+		CellAddress:  cellAddress,
+		Data:         tx.Data,
 	}
 }
 

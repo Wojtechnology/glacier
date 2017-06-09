@@ -9,8 +9,10 @@ import (
 	"github.com/wojtechnology/glacier/meddb"
 )
 
-func TestToDBTransaction(t *testing.T) {
+func TestDBTransactionMapper(t *testing.T) {
 	tx := &Transaction{
+		AssignedTo:   []byte{12},
+		LastAssigned: big.NewInt(420),
 		CellAddress: &CellAddress{
 			TableName: []byte{42},
 			RowId:     []byte{32},
@@ -19,11 +21,7 @@ func TestToDBTransaction(t *testing.T) {
 		},
 		Data: []byte{69},
 	}
-	var (
-		assignedTo   = []byte{12}
-		lastAssigned = big.NewInt(420)
-		hash         = rlpHash(tx)
-	)
+	hash := rlpHash(tx)
 
 	expected := &meddb.Transaction{
 		Hash: hash.Bytes(),
@@ -33,11 +31,11 @@ func TestToDBTransaction(t *testing.T) {
 			ColId:     []byte{43},
 			VerId:     big.NewInt(4),
 		},
-		AssignedTo:   assignedTo,
-		LastAssigned: lastAssigned,
+		AssignedTo:   []byte{12},
+		LastAssigned: big.NewInt(420),
 		Data:         []byte{69},
 	}
-	actual := tx.toDBTransaction(assignedTo, lastAssigned)
+	actual := tx.toDBTransaction()
 	assert.Equal(t, expected, actual)
 
 	back := fromDBTransaction(actual)
@@ -48,19 +46,13 @@ func TestDBTransactionMapperEmpty(t *testing.T) {
 	tx := &Transaction{
 		CellAddress: &CellAddress{},
 	}
-	var (
-		assignedTo   []byte   = nil
-		lastAssigned *big.Int = nil
-		hash                  = rlpHash(tx)
-	)
+	hash := rlpHash(tx)
 
 	expected := &meddb.Transaction{
-		Hash:         hash.Bytes(),
-		CellAddress:  &meddb.CellAddress{},
-		AssignedTo:   assignedTo,
-		LastAssigned: lastAssigned,
+		Hash:        hash.Bytes(),
+		CellAddress: &meddb.CellAddress{},
 	}
-	actual := tx.toDBTransaction(assignedTo, lastAssigned)
+	actual := tx.toDBTransaction()
 	assert.Equal(t, expected, actual)
 
 	back := fromDBTransaction(actual)

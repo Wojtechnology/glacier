@@ -14,8 +14,12 @@ type Blockchain struct {
 	federation []*Node            // All other nodes in the network
 }
 
-func NewBlockchain(db meddb.BlockchainDB, me *Node) *Blockchain {
-	return &Blockchain{db: db, me: me, federation: []*Node{&Node{PubKey: []byte{42}}}}
+func NewBlockchain(db meddb.BlockchainDB, me *Node, federation []*Node) *Blockchain {
+	return &Blockchain{
+		db:         db,
+		me:         me,
+		federation: federation,
+	}
 }
 
 // --------------
@@ -24,10 +28,10 @@ func NewBlockchain(db meddb.BlockchainDB, me *Node) *Blockchain {
 
 func (bc *Blockchain) AddTransaction(tx *Transaction) error {
 	now := time.Now().UTC().UnixNano()
-	assignedTo := bc.randomAssignee(now).PubKey
-	lastAssigned := big.NewInt(now)
+	tx.AssignedTo = bc.randomAssignee(now).PubKey
+	tx.LastAssigned = big.NewInt(now)
 
-	if err := bc.db.WriteTransaction(tx.toDBTransaction(assignedTo, lastAssigned)); err != nil {
+	if err := bc.db.WriteTransaction(tx.toDBTransaction()); err != nil {
 		return err
 	}
 
@@ -45,16 +49,60 @@ func (bc *Blockchain) BuildBlock() error {
 		txs[i] = fromDBTransaction(dbTx)
 	}
 
-	_ = make([]*Transaction, 0)
-	_ = make([]*Transaction, 0)
+	validTxs := make([]*Transaction, 0)
+	invalidTxs := make([]*Transaction, 0)
 	for _, tx := range txs {
+		// TODO: Also, there is the case where the transaction depends on an unconfirmed block
+		// You will need to place them back into the backlog
 		if tx.Valid() {
+			validTxs = append(validTxs, tx)
 		} else {
+			invalidTxs = append(invalidTxs, tx)
 		}
 	}
 
-	// Delete invalid transactions
-	// Create block out of valid transactions
+	// Remove invalid transactions from backlog
+	toDelete := make([]*meddb.Transaction, len(invalidTxs))
+	for i, tx := range invalidTxs {
+		toDelete[i] = tx.toDBTransaction()
+	}
+	if err := bc.db.DeleteTransactions(toDelete); err != nil {
+		return err
+	}
+
+	// TODO: Have some rule for this in the config
+	// i.e. if len(validTxs) > MIN_BLOCK_SIZE ||
+	//     (timeSinceLastBlock > MAX_TIME && len(validTxs) > 0)
+	if len(validTxs) == 0 {
+		return nil
+	}
+
+	// Create block out of valid transactions and write to database
+	now := time.Now().UTC().UnixNano()
+	b := &Block{
+		Transactions: make([][]byte, len(validTxs)),
+		CreatedAt:    big.NewInt(now),
+		Creator:      bc.me.PubKey,
+	}
+	for i, tx := range validTxs {
+		// TODO: Store whole transactions instead of just hashes
+		b.Transactions[i] = tx.Hash().Bytes()
+	}
+	if err := bc.db.WriteBlock(b.toDBBlock()); err != nil {
+		return err
+	}
+
+	// Remove valid transactions from backlog, now that they have been added to block.
+	// We want this to happen after the block has been created since even if the program crashes
+	// here, these transactions will not be added again (double spend).
+	toDelete = make([]*meddb.Transaction, len(invalidTxs))
+	for i, tx := range validTxs {
+		toDelete[i] = tx.toDBTransaction()
+	}
+	if err := bc.db.DeleteTransactions(toDelete); err != nil {
+		return err
+	}
+
 	return nil
 }
 
