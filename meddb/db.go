@@ -13,10 +13,8 @@ type BlockchainDB interface {
 	DeleteTransactions([]*Transaction) error
 	// Writes block to block table
 	WriteBlock(*Block) error
-}
-
-type Node struct {
-	PubKey []byte
+	// Writes vote to vote table
+	WriteVote(*Vote) error
 }
 
 type CellAddress struct {
@@ -27,11 +25,11 @@ type CellAddress struct {
 }
 
 type Transaction struct {
-	Hash         []byte
-	AssignedTo   []byte // Public key of node this transaction is assigned to
-	LastAssigned *big.Int
-	CellAddress  *CellAddress
-	Data         []byte
+	Hash        []byte
+	AssignedTo  []byte // Public key of node this transaction is assigned to
+	AssignedAt  *big.Int
+	CellAddress *CellAddress
+	Data        []byte
 }
 
 type Block struct {
@@ -41,10 +39,19 @@ type Block struct {
 	Creator      []byte
 }
 
+type Vote struct {
+	Hash      []byte
+	Voter     []byte
+	VotedAt   *big.Int
+	PrevBlock []byte
+	NextBlock []byte // Block we are voting on
+	Value     bool
+}
+
 func (tx *Transaction) Clone() *Transaction {
 	var lastAssigned *big.Int = nil
-	if tx.LastAssigned != nil {
-		lastAssigned = big.NewInt(tx.LastAssigned.Int64())
+	if tx.AssignedAt != nil {
+		lastAssigned = big.NewInt(tx.AssignedAt.Int64())
 	}
 
 	var cellAddress *CellAddress = nil
@@ -63,11 +70,11 @@ func (tx *Transaction) Clone() *Transaction {
 	}
 
 	return &Transaction{
-		Hash:         tx.Hash,
-		AssignedTo:   tx.AssignedTo,
-		LastAssigned: lastAssigned,
-		CellAddress:  cellAddress,
-		Data:         tx.Data,
+		Hash:        tx.Hash,
+		AssignedTo:  tx.AssignedTo,
+		AssignedAt:  lastAssigned,
+		CellAddress: cellAddress,
+		Data:        tx.Data,
 	}
 }
 
@@ -82,5 +89,21 @@ func (b *Block) Clone() *Block {
 		Transactions: b.Transactions,
 		CreatedAt:    createdAt,
 		Creator:      b.Creator,
+	}
+}
+
+func (v *Vote) Clone() *Vote {
+	var votedAt *big.Int = nil
+	if v.VotedAt != nil {
+		votedAt = big.NewInt(v.VotedAt.Int64())
+	}
+
+	return &Vote{
+		Hash:      v.Hash,
+		Voter:     v.Voter,
+		VotedAt:   votedAt,
+		PrevBlock: v.PrevBlock,
+		NextBlock: v.NextBlock,
+		Value:     v.Value,
 	}
 }

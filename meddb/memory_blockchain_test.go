@@ -64,6 +64,16 @@ func TestMemoryWriteBlock(t *testing.T) {
 	assert.Equal(t, b, db.blockTable[string(b.Hash)])
 }
 
+func TestMemoryWriteVote(t *testing.T) {
+	db := getMemoryDB(t)
+	v := getTestVote()
+
+	err := db.WriteVote(v)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(db.voteTable))
+	assert.Equal(t, v, db.voteTable[string(v.Hash)])
+}
+
 // -------
 // Helpers
 // -------
@@ -76,9 +86,9 @@ func getMemoryDB(t *testing.T) *MemoryBlockchainDB {
 
 func getTestTransaction() *Transaction {
 	return &Transaction{
-		Hash:         []byte{32},
-		AssignedTo:   []byte{42},
-		LastAssigned: big.NewInt(123),
+		Hash:       []byte{32},
+		AssignedTo: []byte{42},
+		AssignedAt: big.NewInt(123),
 		CellAddress: &CellAddress{
 			TableName: []byte{52},
 			RowId:     []byte{62},
@@ -95,5 +105,16 @@ func getTestBlock() *Block {
 		Transactions: [][]byte{[]byte{142, 152}},
 		CreatedAt:    big.NewInt(162),
 		Creator:      []byte{172},
+	}
+}
+
+func getTestVote() *Vote {
+	return &Vote{
+		Hash:      []byte{202},
+		Voter:     []byte{212},
+		VotedAt:   big.NewInt(222),
+		PrevBlock: []byte{232},
+		NextBlock: []byte{242},
+		Value:     true,
 	}
 }

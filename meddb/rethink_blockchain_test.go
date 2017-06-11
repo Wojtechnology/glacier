@@ -62,6 +62,7 @@ func TestRethinkGetAssignedTransactions(t *testing.T) {
 
 func TestRethinkDeleteTransactions(t *testing.T) {
 	db := getRethinkDB(t)
+	defer rethinkDeleteBacklog(db)
 	tx := getTestTransaction()
 	otherTx := getTestTransaction()
 	otherTx.Hash = []byte{22}
@@ -91,6 +92,20 @@ func TestRethinkWriteBlock(t *testing.T) {
 	assert.Equal(t, b, bs[0])
 }
 
+func TestRethinkWriteVote(t *testing.T) {
+	db := getRethinkDB(t)
+	defer rethinkDeleteVotes(db)
+	v := getTestVote()
+
+	err := db.WriteVote(v)
+	assert.Nil(t, err)
+
+	vs := rethinkGetVotes(t, db)
+
+	assert.Equal(t, 1, len(vs))
+	assert.Equal(t, v, vs[0])
+}
+
 // ------------
 // Test Helpers
 // ------------
@@ -101,8 +116,13 @@ func TestRethinkTransactionMapper(t *testing.T) {
 }
 
 func TestRethinkBlockMapper(t *testing.T) {
-	tx := getTestBlock()
-	assert.Equal(t, tx, fromRethinkBlock(newRethinkBlock(tx)))
+	b := getTestBlock()
+	assert.Equal(t, b, fromRethinkBlock(newRethinkBlock(b)))
+}
+
+func TestRethinkVoteMapper(t *testing.T) {
+	v := getTestVote()
+	assert.Equal(t, v, fromRethinkVote(newRethinkVote(v)))
 }
 
 // -------
@@ -152,10 +172,29 @@ func rethinkGetBlocks(t *testing.T, db *RethinkBlockchainDB) []*Block {
 	return bs
 }
 
+func rethinkGetVotes(t *testing.T, db *RethinkBlockchainDB) []*Vote {
+	cur, err := db.voteTable().Run(db.session)
+	assert.Nil(t, err)
+
+	var res []*rethinkVote
+	err = cur.All(&res)
+	assert.Nil(t, err)
+
+	vs := make([]*Vote, len(res))
+	for i, v := range res {
+		vs[i] = fromRethinkVote(v)
+	}
+	return vs
+}
+
 func rethinkDeleteBacklog(db *RethinkBlockchainDB) {
 	db.backlogTable().Delete().RunWrite(db.session)
 }
 
 func rethinkDeleteBlocks(db *RethinkBlockchainDB) {
 	db.blockTable().Delete().RunWrite(db.session)
+}
+
+func rethinkDeleteVotes(db *RethinkBlockchainDB) {
+	db.voteTable().Delete().RunWrite(db.session)
 }

@@ -11,6 +11,8 @@ type MemoryBlockchainDB struct {
 	backlogLock  sync.RWMutex
 	blockTable   map[string]*Block
 	blockLock    sync.RWMutex
+	voteTable    map[string]*Vote
+	voteLock     sync.RWMutex
 }
 
 // ----------------------
@@ -21,6 +23,7 @@ func NewMemoryBlockchainDB() (*MemoryBlockchainDB, error) {
 	return &MemoryBlockchainDB{
 		backlogTable: make(map[string]*Transaction),
 		blockTable:   make(map[string]*Block),
+		voteTable:    make(map[string]*Vote),
 	}, nil
 }
 
@@ -67,5 +70,13 @@ func (db *MemoryBlockchainDB) WriteBlock(b *Block) error {
 	defer db.blockLock.Unlock()
 
 	db.blockTable[string(b.Hash)] = b.Clone()
+	return nil
+}
+
+func (db *MemoryBlockchainDB) WriteVote(v *Vote) error {
+	db.voteLock.Lock()
+	defer db.voteLock.Unlock()
+
+	db.voteTable[string(v.Hash)] = v.Clone()
 	return nil
 }

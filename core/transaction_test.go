@@ -11,8 +11,8 @@ import (
 
 func TestDBTransactionMapper(t *testing.T) {
 	tx := &Transaction{
-		AssignedTo:   []byte{12},
-		LastAssigned: big.NewInt(420),
+		AssignedTo: []byte{12},
+		AssignedAt: big.NewInt(420),
 		CellAddress: &CellAddress{
 			TableName: []byte{42},
 			RowId:     []byte{32},
@@ -31,9 +31,9 @@ func TestDBTransactionMapper(t *testing.T) {
 			ColId:     []byte{43},
 			VerId:     big.NewInt(4),
 		},
-		AssignedTo:   []byte{12},
-		LastAssigned: big.NewInt(420),
-		Data:         []byte{69},
+		AssignedTo: []byte{12},
+		AssignedAt: big.NewInt(420),
+		Data:       []byte{69},
 	}
 	actual := tx.toDBTransaction()
 	assert.Equal(t, expected, actual)

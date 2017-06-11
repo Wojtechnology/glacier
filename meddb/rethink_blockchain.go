@@ -10,6 +10,7 @@ import (
 const (
 	rethinkBacklogName = "backlog"
 	rethinkBlockName   = "block"
+	rethinkVoteName    = "vote"
 )
 
 type RethinkBlockchainDB struct {
@@ -26,11 +27,11 @@ type rethinkCellAddress struct {
 }
 
 type rethinkTransaction struct {
-	Hash         []byte              `gorethink:"id"`
-	AssignedTo   []byte              `gorethink:"assigned_to"`
-	LastAssigned []byte              `gorethink:"last_assigned"`
-	CellAddress  *rethinkCellAddress `gorethink:"cell_address"`
-	Data         []byte              `gorethink:"data"`
+	Hash        []byte              `gorethink:"id"`
+	AssignedTo  []byte              `gorethink:"assigned_to"`
+	AssignedAt  []byte              `gorethink:"assigned_at"`
+	CellAddress *rethinkCellAddress `gorethink:"cell_address"`
+	Data        []byte              `gorethink:"data"`
 }
 
 type rethinkBlock struct {
@@ -38,6 +39,15 @@ type rethinkBlock struct {
 	Transactions [][]byte `gorethink:"transactions"`
 	CreatedAt    []byte   `gorethink:"created_at"`
 	Creator      []byte   `gorethink:"creator"`
+}
+
+type rethinkVote struct {
+	Hash      []byte `gorethink:"id"`
+	Voter     []byte `gorethink:"voter"`
+	VotedAt   []byte `gorethink:"voted_at"`
+	PrevBlock []byte `gorethink:"prev_block"`
+	NextBlock []byte `gorethink:"next_block"`
+	Value     bool   `gorethink:"value"`
 }
 
 // ----------------------
@@ -71,13 +81,17 @@ func (db *RethinkBlockchainDB) SetupTables() error {
 	if err != nil {
 		return err
 	}
-	_, err = r.DB(db.database).Table(rethinkBacklogName).IndexCreate(
+	_, err = r.DB(db.database).TableCreate(rethinkVoteName).RunWrite(db.session)
+	if err != nil {
+		return err
+	}
+	_, err = db.backlogTable().IndexCreate(
 		"assigned_to",
 	).RunWrite(db.session)
 	if err != nil {
 		return err
 	}
-	_, err = r.DB(db.database).Table(rethinkBacklogName).IndexWait().Run(db.session)
+	_, err = db.backlogTable().IndexWait().Run(db.session)
 	if err != nil {
 		return err
 	}
@@ -153,6 +167,21 @@ func (db *RethinkBlockchainDB) WriteBlock(b *Block) error {
 	return nil
 }
 
+func (db *RethinkBlockchainDB) WriteVote(v *Vote) error {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	rethinkV := newRethinkVote(v)
+	_, err := db.voteTable().Insert(rethinkV, r.InsertOpts{
+		Conflict: "replace",
+	}).RunWrite(db.session)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // -------
 // Helpers
 // -------
@@ -165,10 +194,14 @@ func (db *RethinkBlockchainDB) blockTable() r.Term {
 	return r.DB(db.database).Table(rethinkBlockName)
 }
 
+func (db *RethinkBlockchainDB) voteTable() r.Term {
+	return r.DB(db.database).Table(rethinkVoteName)
+}
+
 func newRethinkTransaction(tx *Transaction) *rethinkTransaction {
 	var lastAssigned []byte = nil
-	if tx.LastAssigned != nil {
-		lastAssigned = int64ToBytes(tx.LastAssigned.Int64())
+	if tx.AssignedAt != nil {
+		lastAssigned = int64ToBytes(tx.AssignedAt.Int64())
 	}
 	var cellAddress *rethinkCellAddress = nil
 	if tx.CellAddress != nil {
@@ -186,18 +219,18 @@ func newRethinkTransaction(tx *Transaction) *rethinkTransaction {
 	}
 
 	return &rethinkTransaction{
-		Hash:         tx.Hash,
-		AssignedTo:   tx.AssignedTo,
-		LastAssigned: lastAssigned,
-		CellAddress:  cellAddress,
-		Data:         tx.Data,
+		Hash:        tx.Hash,
+		AssignedTo:  tx.AssignedTo,
+		AssignedAt:  lastAssigned,
+		CellAddress: cellAddress,
+		Data:        tx.Data,
 	}
 }
 
 func fromRethinkTransaction(tx *rethinkTransaction) *Transaction {
 	var lastAssigned *big.Int = nil
-	if tx.LastAssigned != nil {
-		lastAssigned = big.NewInt(bytesToInt64(tx.LastAssigned))
+	if tx.AssignedAt != nil {
+		lastAssigned = big.NewInt(bytesToInt64(tx.AssignedAt))
 	}
 	var cellAddress *CellAddress = nil
 	if tx.CellAddress != nil {
@@ -215,11 +248,11 @@ func fromRethinkTransaction(tx *rethinkTransaction) *Transaction {
 	}
 
 	return &Transaction{
-		Hash:         tx.Hash,
-		AssignedTo:   tx.AssignedTo,
-		LastAssigned: lastAssigned,
-		CellAddress:  cellAddress,
-		Data:         tx.Data,
+		Hash:        tx.Hash,
+		AssignedTo:  tx.AssignedTo,
+		AssignedAt:  lastAssigned,
+		CellAddress: cellAddress,
+		Data:        tx.Data,
 	}
 
 }
@@ -249,5 +282,37 @@ func fromRethinkBlock(b *rethinkBlock) *Block {
 		Transactions: b.Transactions,
 		CreatedAt:    createdAt,
 		Creator:      b.Creator,
+	}
+}
+
+func newRethinkVote(v *Vote) *rethinkVote {
+	var votedAt []byte = nil
+	if v.VotedAt != nil {
+		votedAt = int64ToBytes(v.VotedAt.Int64())
+	}
+
+	return &rethinkVote{
+		Hash:      v.Hash,
+		Voter:     v.Voter,
+		VotedAt:   votedAt,
+		PrevBlock: v.PrevBlock,
+		NextBlock: v.NextBlock,
+		Value:     v.Value,
+	}
+}
+
+func fromRethinkVote(v *rethinkVote) *Vote {
+	var votedAt *big.Int = nil
+	if v.VotedAt != nil {
+		votedAt = big.NewInt(bytesToInt64(v.VotedAt))
+	}
+
+	return &Vote{
+		Hash:      v.Hash,
+		Voter:     v.Voter,
+		VotedAt:   votedAt,
+		PrevBlock: v.PrevBlock,
+		NextBlock: v.NextBlock,
+		Value:     v.Value,
 	}
 }

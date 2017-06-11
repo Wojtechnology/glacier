@@ -14,11 +14,10 @@ type CellAddress struct {
 }
 
 type Transaction struct {
-	// TODO(wojtek): signature
-	AssignedTo   []byte
-	LastAssigned *big.Int
-	CellAddress  *CellAddress
-	Data         []byte
+	AssignedTo  []byte
+	AssignedAt  *big.Int
+	CellAddress *CellAddress
+	Data        []byte
 }
 
 // ---------------
@@ -26,6 +25,7 @@ type Transaction struct {
 // ---------------
 
 func (tx *Transaction) Hash() Hash {
+	// TODO(wojtek): probably leave out AssignedTo, AssignedAt
 	return rlpHash(tx)
 }
 
@@ -35,8 +35,8 @@ func (tx *Transaction) Valid() bool {
 
 func (tx *Transaction) toDBTransaction() *meddb.Transaction {
 	var lastAssigned *big.Int = nil
-	if tx.LastAssigned != nil {
-		lastAssigned = big.NewInt(tx.LastAssigned.Int64())
+	if tx.AssignedAt != nil {
+		lastAssigned = big.NewInt(tx.AssignedAt.Int64())
 	}
 
 	var cellAddress *meddb.CellAddress = nil
@@ -45,18 +45,18 @@ func (tx *Transaction) toDBTransaction() *meddb.Transaction {
 	}
 	// TODO(wojtek): Maybe make copies here
 	return &meddb.Transaction{
-		Hash:         tx.Hash().Bytes(),
-		AssignedTo:   tx.AssignedTo,
-		LastAssigned: lastAssigned,
-		CellAddress:  cellAddress,
-		Data:         tx.Data,
+		Hash:        tx.Hash().Bytes(),
+		AssignedTo:  tx.AssignedTo,
+		AssignedAt:  lastAssigned,
+		CellAddress: cellAddress,
+		Data:        tx.Data,
 	}
 }
 
 func fromDBTransaction(tx *meddb.Transaction) *Transaction {
 	var lastAssigned *big.Int = nil
 	if tx.AssignedTo != nil {
-		lastAssigned = big.NewInt(tx.LastAssigned.Int64())
+		lastAssigned = big.NewInt(tx.AssignedAt.Int64())
 	}
 
 	var cellAddress *CellAddress = nil
@@ -65,10 +65,10 @@ func fromDBTransaction(tx *meddb.Transaction) *Transaction {
 	}
 	// TODO(wojtek): Maybe make copies here
 	return &Transaction{
-		AssignedTo:   tx.AssignedTo,
-		LastAssigned: lastAssigned,
-		CellAddress:  cellAddress,
-		Data:         tx.Data,
+		AssignedTo:  tx.AssignedTo,
+		AssignedAt:  lastAssigned,
+		CellAddress: cellAddress,
+		Data:        tx.Data,
 	}
 }
 

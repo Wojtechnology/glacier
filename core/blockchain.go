@@ -26,10 +26,11 @@ func NewBlockchain(db meddb.BlockchainDB, me *Node, federation []*Node) *Blockch
 // Blockchain API
 // --------------
 
+// Adds transaction to blockchain backlog.
 func (bc *Blockchain) AddTransaction(tx *Transaction) error {
 	now := time.Now().UTC().UnixNano()
 	tx.AssignedTo = bc.randomAssignee(now).PubKey
-	tx.LastAssigned = big.NewInt(now)
+	tx.AssignedAt = big.NewInt(now)
 
 	if err := bc.db.WriteTransaction(tx.toDBTransaction()); err != nil {
 		return err
@@ -38,6 +39,10 @@ func (bc *Blockchain) AddTransaction(tx *Transaction) error {
 	return nil
 }
 
+// Builds block from transactions currently assigned to this node in the backlog.
+// Validates transactions, builds block and writes block to block table.
+// Also, delete invalid transactions from backlog and places transactions that depend on unconfirmed
+// blocks back into the backlog.
 func (bc *Blockchain) BuildBlock() error {
 	dbTxs, err := bc.db.GetAssignedTransactions(bc.me.PubKey)
 	if err != nil {
@@ -103,6 +108,11 @@ func (bc *Blockchain) BuildBlock() error {
 		return err
 	}
 
+	return nil
+}
+
+// Votes on the oldest block that this node is assigned to.
+func (bc *Blockchain) VoteOnBlock() error {
 	return nil
 }
 

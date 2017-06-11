@@ -29,7 +29,7 @@ func TestAddTransaction(t *testing.T) {
 	err = bc.AddTransaction(tx)
 	assert.Nil(t, err)
 	assert.Equal(t, pubKey, tx.AssignedTo)
-	assert.NotNil(t, tx.LastAssigned)
+	assert.NotNil(t, tx.AssignedAt)
 
 	txs, err := db.GetAssignedTransactions(pubKey)
 	assert.Nil(t, err)
