@@ -10,18 +10,23 @@ import (
 )
 
 func TestDBBlockMapper(t *testing.T) {
+	tx := &Transaction{Data: []byte{42}}
 	b := &Block{
-		Transactions: [][]byte{[]byte{42}},
+		Transactions: []*Transaction{tx},
 		CreatedAt:    big.NewInt(43),
 		Creator:      []byte{44},
 	}
 	hash := rlpHash(b)
+	txHash := rlpHash(tx)
 
 	expected := &meddb.Block{
-		Hash:         hash.Bytes(),
-		Transactions: [][]byte{[]byte{42}},
-		CreatedAt:    big.NewInt(43),
-		Creator:      []byte{44},
+		Hash: hash.Bytes(),
+		Transactions: []*meddb.Transaction{&meddb.Transaction{
+			Hash: txHash.Bytes(),
+			Data: []byte{42},
+		}},
+		CreatedAt: big.NewInt(43),
+		Creator:   []byte{44},
 	}
 	actual := b.toDBBlock()
 	assert.Equal(t, expected, actual)

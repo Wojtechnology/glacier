@@ -35,10 +35,10 @@ type rethinkTransaction struct {
 }
 
 type rethinkBlock struct {
-	Hash         []byte   `gorethink:"id"`
-	Transactions [][]byte `gorethink:"transactions"`
-	CreatedAt    []byte   `gorethink:"created_at"`
-	Creator      []byte   `gorethink:"creator"`
+	Hash         []byte                `gorethink:"id"`
+	Transactions []*rethinkTransaction `gorethink:"transactions"`
+	CreatedAt    []byte                `gorethink:"created_at"`
+	Creator      []byte                `gorethink:"creator"`
 }
 
 type rethinkVote struct {
@@ -263,9 +263,17 @@ func newRethinkBlock(b *Block) *rethinkBlock {
 		createdAt = int64ToBytes(b.CreatedAt.Int64())
 	}
 
+	var txs []*rethinkTransaction = nil
+	if b.Transactions != nil {
+		txs = make([]*rethinkTransaction, len(b.Transactions))
+		for i, tx := range b.Transactions {
+			txs[i] = newRethinkTransaction(tx)
+		}
+	}
+
 	return &rethinkBlock{
 		Hash:         b.Hash,
-		Transactions: b.Transactions,
+		Transactions: txs,
 		CreatedAt:    createdAt,
 		Creator:      b.Creator,
 	}
@@ -277,9 +285,17 @@ func fromRethinkBlock(b *rethinkBlock) *Block {
 		createdAt = big.NewInt(bytesToInt64(b.CreatedAt))
 	}
 
+	var txs []*Transaction = nil
+	if b.Transactions != nil {
+		txs = make([]*Transaction, len(b.Transactions))
+		for i, tx := range b.Transactions {
+			txs[i] = fromRethinkTransaction(tx)
+		}
+	}
+
 	return &Block{
 		Hash:         b.Hash,
-		Transactions: b.Transactions,
+		Transactions: txs,
 		CreatedAt:    createdAt,
 		Creator:      b.Creator,
 	}

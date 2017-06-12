@@ -85,13 +85,13 @@ func (bc *Blockchain) BuildBlock() error {
 	// Create block out of valid transactions and write to database
 	now := time.Now().UTC().UnixNano()
 	b := &Block{
-		Transactions: make([][]byte, len(validTxs)),
+		Transactions: make([]*Transaction, len(validTxs)),
 		CreatedAt:    big.NewInt(now),
 		Creator:      bc.me.PubKey,
 	}
 	for i, tx := range validTxs {
 		// TODO: Store whole transactions instead of just hashes
-		b.Transactions[i] = tx.Hash().Bytes()
+		b.Transactions[i] = tx
 	}
 	if err := bc.db.WriteBlock(b.toDBBlock()); err != nil {
 		return err

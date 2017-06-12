@@ -34,7 +34,7 @@ type Transaction struct {
 
 type Block struct {
 	Hash         []byte
-	Transactions [][]byte
+	Transactions []*Transaction
 	CreatedAt    *big.Int
 	Creator      []byte
 }

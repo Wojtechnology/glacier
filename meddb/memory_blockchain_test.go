@@ -102,7 +102,7 @@ func getTestTransaction() *Transaction {
 func getTestBlock() *Block {
 	return &Block{
 		Hash:         []byte{132},
-		Transactions: [][]byte{[]byte{142, 152}},
+		Transactions: []*Transaction{getTestTransaction()},
 		CreatedAt:    big.NewInt(162),
 		Creator:      []byte{172},
 	}
