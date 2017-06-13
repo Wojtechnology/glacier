@@ -10,6 +10,7 @@ type Block struct {
 	Transactions []*Transaction // Contains hashes of all contained transactions
 	CreatedAt    *big.Int       // Time at which block was created, will be used to determine order
 	Creator      []byte
+	Voters       [][]byte
 }
 
 // ---------
@@ -41,6 +42,7 @@ func (b *Block) toDBBlock() *meddb.Block {
 		Transactions: txs,
 		CreatedAt:    createdAt,
 		Creator:      b.Creator,
+		Voters:       b.Voters,
 	}
 }
 
@@ -63,5 +65,6 @@ func fromDBBlock(b *meddb.Block) *Block {
 		Transactions: txs,
 		CreatedAt:    createdAt,
 		Creator:      b.Creator,
+		Voters:       b.Voters,
 	}
 }

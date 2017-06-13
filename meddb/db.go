@@ -37,6 +37,7 @@ type Block struct {
 	Transactions []*Transaction
 	CreatedAt    *big.Int
 	Creator      []byte
+	Voters       [][]byte
 }
 
 type Vote struct {
@@ -89,6 +90,7 @@ func (b *Block) Clone() *Block {
 		Transactions: b.Transactions,
 		CreatedAt:    createdAt,
 		Creator:      b.Creator,
+		Voters:       b.Voters,
 	}
 }
 

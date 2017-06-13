@@ -39,6 +39,7 @@ type rethinkBlock struct {
 	Transactions []*rethinkTransaction `gorethink:"transactions"`
 	CreatedAt    []byte                `gorethink:"created_at"`
 	Creator      []byte                `gorethink:"creator"`
+	Voters       [][]byte              `gorethink:"voters"`
 }
 
 type rethinkVote struct {
@@ -276,6 +277,7 @@ func newRethinkBlock(b *Block) *rethinkBlock {
 		Transactions: txs,
 		CreatedAt:    createdAt,
 		Creator:      b.Creator,
+		Voters:       b.Voters,
 	}
 }
 
@@ -298,6 +300,7 @@ func fromRethinkBlock(b *rethinkBlock) *Block {
 		Transactions: txs,
 		CreatedAt:    createdAt,
 		Creator:      b.Creator,
+		Voters:       b.Voters,
 	}
 }
 

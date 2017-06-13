@@ -105,6 +105,7 @@ func getTestBlock() *Block {
 		Transactions: []*Transaction{getTestTransaction()},
 		CreatedAt:    big.NewInt(162),
 		Creator:      []byte{172},
+		Voters:       [][]byte{[]byte{182}},
 	}
 }
 
