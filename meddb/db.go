@@ -5,16 +5,25 @@ import "math/big"
 type BlockchainDB interface {
 	// First time setup to create required tables and indices
 	SetupTables() error
+
 	// Writes transaction to backlog table
 	WriteTransaction(*Transaction) error
 	// Returns transactions currently assigned to given node from backlog table
 	GetAssignedTransactions([]byte) ([]*Transaction, error)
 	// Deletes given transactions from backlog table
 	DeleteTransactions([]*Transaction) error
+
 	// Writes block to block table
 	WriteBlock(*Block) error
+	// Returns k olds blocks from block table starting at given timestamp sorted by increasing
+	// CreatedAt timestamp.
+	GetOldestBlocks(int64, int) ([]*Block, error)
+
 	// Writes vote to vote table
 	WriteVote(*Vote) error
+	// Returns k most recent votes for given public key form votes table sorted by decreasing
+	// VotedAt timestamp.
+	GetRecentVotes([]byte, int) ([]*Vote, error)
 }
 
 type CellAddress struct {

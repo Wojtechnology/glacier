@@ -64,6 +64,35 @@ func TestMemoryWriteBlock(t *testing.T) {
 	assert.Equal(t, b, db.blockTable[string(b.Hash)])
 }
 
+func TestMemoryGetOldestBlocks(t *testing.T) {
+	db := getMemoryDB(t)
+	first := getTestBlock()
+	second := getTestBlock()
+	third := getTestBlock()
+	fourth := getTestBlock()
+	fifth := getTestBlock()
+
+	first.CreatedAt = big.NewInt(69)
+	second.CreatedAt = big.NewInt(70)
+	third.CreatedAt = big.NewInt(74)
+	fourth.CreatedAt = big.NewInt(76)
+	fifth.CreatedAt = nil
+
+	db.blockTable = map[string]*Block{
+		"first":  first,
+		"second": second,
+		"third":  third,
+		"fourth": fourth,
+		"fifth":  fifth,
+	}
+
+	res, err := db.GetOldestBlocks(70, 2)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(res))
+	assert.Equal(t, second, res[0])
+	assert.Equal(t, third, res[1])
+}
+
 func TestMemoryWriteVote(t *testing.T) {
 	db := getMemoryDB(t)
 	v := getTestVote()
@@ -72,6 +101,33 @@ func TestMemoryWriteVote(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(db.voteTable))
 	assert.Equal(t, v, db.voteTable[string(v.Hash)])
+}
+
+func TestMemoryGetRecentVotes(t *testing.T) {
+	db := getMemoryDB(t)
+	first := getTestVote()
+	second := getTestVote()
+	third := getTestVote()
+	fourth := getTestVote()
+
+	first.VotedAt = big.NewInt(69)
+	second.VotedAt = big.NewInt(70)
+	third.VotedAt = big.NewInt(74)
+	fourth.VotedAt = nil
+
+	db.voteTable = map[string]*Vote{
+		"first":  first,
+		"second": second,
+		"third":  third,
+		"fourth": fourth,
+	}
+
+	res, err := db.GetRecentVotes([]byte{212}, 2)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(res))
+	assert.Equal(t, third, res[0])
+	assert.Equal(t, second, res[1])
+
 }
 
 // -------

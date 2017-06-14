@@ -1,6 +1,7 @@
 package meddb
 
 import (
+	"math"
 	"math/big"
 	"sync"
 
@@ -14,7 +15,8 @@ const (
 )
 
 type RethinkBlockchainDB struct {
-	session  *r.Session
+	session *r.Session
+	// TODO: Possibly remove lock, probably not needed
 	lock     sync.RWMutex
 	database string
 }
@@ -86,9 +88,15 @@ func (db *RethinkBlockchainDB) SetupTables() error {
 	if err != nil {
 		return err
 	}
-	_, err = db.backlogTable().IndexCreate(
-		"assigned_to",
-	).RunWrite(db.session)
+	err = db.setupBacklogIndices()
+	if err != nil {
+		return err
+	}
+	err = db.setupBlockIndices()
+	if err != nil {
+		return err
+	}
+	err = db.setupVoteIndices()
 	if err != nil {
 		return err
 	}
@@ -97,6 +105,32 @@ func (db *RethinkBlockchainDB) SetupTables() error {
 		return err
 	}
 
+	return nil
+}
+
+func (db *RethinkBlockchainDB) setupBacklogIndices() error {
+	_, err := db.backlogTable().IndexCreate("assigned_to").RunWrite(db.session)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *RethinkBlockchainDB) setupBlockIndices() error {
+	_, err := db.blockTable().IndexCreate("created_at").RunWrite(db.session)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *RethinkBlockchainDB) setupVoteIndices() error {
+	_, err := db.voteTable().IndexCreateFunc("voter__voted_at", func(row r.Term) interface{} {
+		return []interface{}{row.Field("voter"), row.Field("voted_at")}
+	}).RunWrite(db.session)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -168,6 +202,31 @@ func (db *RethinkBlockchainDB) WriteBlock(b *Block) error {
 	return nil
 }
 
+func (db *RethinkBlockchainDB) GetOldestBlocks(start int64, limit int) ([]*Block, error) {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	res, err := db.blockTable().Between(int64ToBytes(start), r.MaxVal, r.BetweenOpts{
+		Index: "created_at",
+	}).OrderBy(r.OrderByOpts{
+		Index: "created_at",
+	}).Limit(limit).Run(db.session)
+	if err != nil {
+		return nil, err
+	}
+
+	var rows []*rethinkBlock
+	if err := res.All(&rows); err != nil {
+		return nil, err
+	}
+
+	bs := make([]*Block, len(rows))
+	for i, row := range rows {
+		bs[i] = fromRethinkBlock(row)
+	}
+	return bs, nil
+}
+
 func (db *RethinkBlockchainDB) WriteVote(v *Vote) error {
 	db.lock.Lock()
 	defer db.lock.Unlock()
@@ -181,6 +240,31 @@ func (db *RethinkBlockchainDB) WriteVote(v *Vote) error {
 	}
 
 	return nil
+}
+
+func (db *RethinkBlockchainDB) GetRecentVotes(pubKey []byte, limit int) ([]*Vote, error) {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	res, err := db.voteTable().Between(
+		[]interface{}{pubKey, int64ToBytes(math.MinInt64)},
+		[]interface{}{pubKey, int64ToBytes(math.MaxInt64)},
+		r.BetweenOpts{Index: "voter__voted_at"},
+	).OrderBy(r.OrderByOpts{Index: r.Desc("voter__voted_at")}).Limit(limit).Run(db.session)
+	if err != nil {
+		return nil, err
+	}
+
+	var rows []*rethinkVote
+	if err := res.All(&rows); err != nil {
+		return nil, err
+	}
+
+	vs := make([]*Vote, len(rows))
+	for i, row := range rows {
+		vs[i] = fromRethinkVote(row)
+	}
+	return vs, nil
 }
 
 // -------

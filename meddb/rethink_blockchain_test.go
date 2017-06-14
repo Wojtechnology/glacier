@@ -1,6 +1,7 @@
 package meddb
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -92,6 +93,35 @@ func TestRethinkWriteBlock(t *testing.T) {
 	assert.Equal(t, b, bs[0])
 }
 
+func TestRethinkGetOldestBlocks(t *testing.T) {
+	db := getRethinkDB(t)
+	first := getTestBlock()
+	second := getTestBlock()
+	third := getTestBlock()
+	fourth := getTestBlock()
+	fifth := getTestBlock()
+
+	first.CreatedAt = big.NewInt(69)
+	second.CreatedAt = big.NewInt(70)
+	third.CreatedAt = big.NewInt(74)
+	fourth.CreatedAt = big.NewInt(76)
+	fifth.CreatedAt = nil
+
+	first.Hash = []byte("first")
+	second.Hash = []byte("second")
+	third.Hash = []byte("third")
+	fourth.Hash = []byte("fourth")
+	fifth.Hash = []byte("fifth")
+
+	rethinkWriteToBlock(t, db, []*Block{first, second, third, fourth, fifth})
+
+	res, err := db.GetOldestBlocks(70, 2)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(res))
+	assert.Equal(t, second, res[0])
+	assert.Equal(t, third, res[1])
+}
+
 func TestRethinkWriteVote(t *testing.T) {
 	db := getRethinkDB(t)
 	defer rethinkDeleteVotes(db)
@@ -104,6 +134,32 @@ func TestRethinkWriteVote(t *testing.T) {
 
 	assert.Equal(t, 1, len(vs))
 	assert.Equal(t, v, vs[0])
+}
+
+func TestRethinkGetRecentVotes(t *testing.T) {
+	db := getRethinkDB(t)
+	first := getTestVote()
+	second := getTestVote()
+	third := getTestVote()
+	fourth := getTestVote()
+
+	first.VotedAt = big.NewInt(69)
+	second.VotedAt = big.NewInt(70)
+	third.VotedAt = big.NewInt(74)
+	fourth.VotedAt = nil
+
+	first.Hash = []byte("first")
+	second.Hash = []byte("second")
+	third.Hash = []byte("third")
+	fourth.Hash = []byte("fourth")
+
+	rethinkWriteToVote(t, db, []*Vote{first, second, third, fourth})
+
+	res, err := db.GetRecentVotes([]byte{212}, 2)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(res))
+	assert.Equal(t, third, res[0])
+	assert.Equal(t, second, res[1])
 }
 
 // ------------
@@ -138,6 +194,20 @@ func getRethinkDB(t *testing.T) *RethinkBlockchainDB {
 func rethinkWriteToBacklog(t *testing.T, db *RethinkBlockchainDB, txs []*Transaction) {
 	for _, tx := range txs {
 		_, err := db.backlogTable().Insert(newRethinkTransaction(tx)).RunWrite(db.session)
+		assert.Nil(t, err)
+	}
+}
+
+func rethinkWriteToBlock(t *testing.T, db *RethinkBlockchainDB, bs []*Block) {
+	for _, b := range bs {
+		_, err := db.blockTable().Insert(newRethinkBlock(b)).RunWrite(db.session)
+		assert.Nil(t, err)
+	}
+}
+
+func rethinkWriteToVote(t *testing.T, db *RethinkBlockchainDB, vs []*Vote) {
+	for _, v := range vs {
+		_, err := db.voteTable().Insert(newRethinkVote(v)).RunWrite(db.session)
 		assert.Nil(t, err)
 	}
 }

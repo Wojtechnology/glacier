@@ -2,6 +2,7 @@ package meddb
 
 import (
 	"bytes"
+	"sort"
 	"sync"
 )
 
@@ -73,10 +74,52 @@ func (db *MemoryBlockchainDB) WriteBlock(b *Block) error {
 	return nil
 }
 
+func (db *MemoryBlockchainDB) GetOldestBlocks(start int64, limit int) ([]*Block, error) {
+	db.blockLock.Lock()
+	defer db.blockLock.Unlock()
+
+	candidates := make([]*Block, 0)
+	for _, b := range db.blockTable {
+		if b.CreatedAt != nil && b.CreatedAt.Int64() >= start {
+			candidates = append(candidates, b.Clone())
+		}
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		// None of the CreatedAt will be nil
+		return candidates[i].CreatedAt.Int64() < candidates[j].CreatedAt.Int64()
+	})
+
+	return candidates[:limit], nil
+}
+
 func (db *MemoryBlockchainDB) WriteVote(v *Vote) error {
 	db.voteLock.Lock()
 	defer db.voteLock.Unlock()
 
 	db.voteTable[string(v.Hash)] = v.Clone()
 	return nil
+}
+
+func (db *MemoryBlockchainDB) GetRecentVotes(pubKey []byte, limit int) ([]*Vote, error) {
+	db.voteLock.Lock()
+	defer db.voteLock.Unlock()
+
+	candidates := make([]*Vote, 0)
+	for _, v := range db.voteTable {
+		if bytes.Equal(v.Voter, pubKey) {
+			candidates = append(candidates, v.Clone())
+		}
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		// Greater than since we want a reverse sort
+		if candidates[i].VotedAt == nil {
+			return false
+		}
+		if candidates[j].VotedAt == nil {
+			return true
+		}
+		return candidates[i].VotedAt.Int64() > candidates[j].VotedAt.Int64()
+	})
+
+	return candidates[:limit], nil
 }

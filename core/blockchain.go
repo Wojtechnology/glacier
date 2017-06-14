@@ -54,10 +54,9 @@ func (bc *Blockchain) GetMyTransactions() ([]*Transaction, error) {
 	return txs, nil
 }
 
-// Builds block from given transactions
-// Validates transactions, builds block and writes block to block table.
-// Also, delete invalid transactions from backlog and places transactions that depend on unconfirmed
-// blocks back into the backlog.
+// Builds block from given transactions.
+// Validates transactions, builds and returns block.
+// Returns error if some of the transactions are invalid, error contains the invalid transactions.
 func (bc *Blockchain) BuildBlock(txs []*Transaction) (*Block, error) {
 	// TODO: Validate transactions
 
