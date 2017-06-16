@@ -23,7 +23,9 @@ type BlockchainDB interface {
 
 	// Writes vote to vote table
 	WriteVote(*Vote) error
-	// Returns k most recent votes for given public key form votes table sorted by decreasing
+	// Returns all votes for given public key from votes table with the given VotedAt
+	GetVotes([]byte, int) ([]*Vote, error)
+	// Returns k most recent votes for given public key from votes table sorted by decreasing
 	// VotedAt timestamp.
 	GetRecentVotes([]byte, int) ([]*Vote, error)
 }

@@ -261,6 +261,25 @@ func (db *RethinkBlockchainDB) WriteVote(v *Vote) error {
 	return nil
 }
 
+func (db *RethinkBlockchainDB) GetVotes(pubKey []byte, votedAt int64) ([]*Vote, error) {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	res, err := db.voteTable().GetAllByIndex("voter__voted_at",
+		[]interface{}{pubKey, int64ToBytes(votedAt)},
+	).Run(db.session)
+	if err != nil {
+		return nil, err
+	}
+
+	var rows []*rethinkVote
+	if err := res.All(&rows); err != nil {
+		return nil, err
+	}
+
+	return fromRethinkVotes(rows), nil
+}
+
 func (db *RethinkBlockchainDB) GetRecentVotes(pubKey []byte, limit int) ([]*Vote, error) {
 	db.lock.Lock()
 	defer db.lock.Unlock()
@@ -279,11 +298,7 @@ func (db *RethinkBlockchainDB) GetRecentVotes(pubKey []byte, limit int) ([]*Vote
 		return nil, err
 	}
 
-	vs := make([]*Vote, len(rows))
-	for i, row := range rows {
-		vs[i] = fromRethinkVote(row)
-	}
-	return vs, nil
+	return fromRethinkVotes(rows), nil
 }
 
 // -------
@@ -445,4 +460,12 @@ func fromRethinkVote(v *rethinkVote) *Vote {
 		NextBlock: v.NextBlock,
 		Value:     v.Value,
 	}
+}
+
+func fromRethinkVotes(rethinkTxs []*rethinkVote) []*Vote {
+	vs := make([]*Vote, len(rethinkTxs))
+	for i, row := range rethinkTxs {
+		vs[i] = fromRethinkVote(row)
+	}
+	return vs
 }

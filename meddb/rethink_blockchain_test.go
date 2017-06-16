@@ -175,6 +175,33 @@ func TestRethinkWriteVote(t *testing.T) {
 	assert.Equal(t, v, vs[0])
 }
 
+func TestRethinkGetVotes(t *testing.T) {
+	db := getRethinkDB(t)
+	defer rethinkDeleteVotes(db)
+	first := getTestVote()
+	second := getTestVote()
+	third := getTestVote()
+	fourth := getTestVote()
+
+	first.VotedAt = big.NewInt(69)
+	second.VotedAt = big.NewInt(70)
+	third.VotedAt = big.NewInt(70)
+	third.Voter = []byte{43}
+	fourth.VotedAt = nil
+
+	first.Hash = []byte("first")
+	second.Hash = []byte("second")
+	third.Hash = []byte("third")
+	fourth.Hash = []byte("fourth")
+
+	rethinkWriteToVote(t, db, []*Vote{first, second, third, fourth})
+
+	res, err := db.GetVotes([]byte{212}, 70)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(res))
+	assert.Equal(t, second, res[0])
+}
+
 func TestRethinkGetRecentVotes(t *testing.T) {
 	db := getRethinkDB(t)
 	defer rethinkDeleteVotes(db)

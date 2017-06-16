@@ -119,6 +119,20 @@ func (db *MemoryBlockchainDB) WriteVote(v *Vote) error {
 	return nil
 }
 
+func (db *MemoryBlockchainDB) GetVotes(pubKey []byte, votedAt int64) ([]*Vote, error) {
+	db.voteLock.Lock()
+	defer db.voteLock.Unlock()
+
+	vs := make([]*Vote, 0)
+	for _, v := range db.voteTable {
+		if bytes.Equal(v.Voter, pubKey) && v.VotedAt != nil && v.VotedAt.Int64() == votedAt {
+			vs = append(vs, v.Clone())
+		}
+	}
+
+	return vs, nil
+}
+
 func (db *MemoryBlockchainDB) GetRecentVotes(pubKey []byte, limit int) ([]*Vote, error) {
 	db.voteLock.Lock()
 	defer db.voteLock.Unlock()

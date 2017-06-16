@@ -139,6 +139,32 @@ func TestMemoryWriteVote(t *testing.T) {
 	assert.Equal(t, v, db.voteTable[string(v.Hash)])
 }
 
+func TestMemoryGetVotes(t *testing.T) {
+	db := getMemoryDB(t)
+	first := getTestVote()
+	second := getTestVote()
+	third := getTestVote()
+	fourth := getTestVote()
+
+	first.VotedAt = big.NewInt(69)
+	second.VotedAt = big.NewInt(70)
+	third.VotedAt = big.NewInt(70)
+	third.Voter = []byte{43}
+	fourth.VotedAt = nil
+
+	db.voteTable = map[string]*Vote{
+		"first":  first,
+		"second": second,
+		"third":  third,
+		"fourth": fourth,
+	}
+
+	res, err := db.GetVotes([]byte{212}, 70)
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(res))
+	assert.Equal(t, second, res[0])
+}
+
 func TestMemoryGetRecentVotes(t *testing.T) {
 	db := getMemoryDB(t)
 	first := getTestVote()
@@ -163,7 +189,6 @@ func TestMemoryGetRecentVotes(t *testing.T) {
 	assert.Equal(t, 2, len(res))
 	assert.Equal(t, third, res[0])
 	assert.Equal(t, second, res[1])
-
 }
 
 // -------
