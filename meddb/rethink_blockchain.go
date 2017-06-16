@@ -162,12 +162,31 @@ func (db *RethinkBlockchainDB) GetAssignedTransactions(pubKey []byte) ([]*Transa
 	if err := res.All(&rows); err != nil {
 		return nil, err
 	}
+	return fromRethinkTransactions(rows), nil
+}
 
-	txs := make([]*Transaction, len(rows))
-	for i, row := range rows {
-		txs[i] = fromRethinkTransaction(row)
+func (db *RethinkBlockchainDB) GetOldAssignedTransactions(pubKey []byte,
+	before int64) ([]*Transaction, error) {
+
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	res, err := db.backlogTable().GetAllByIndex("assigned_to", pubKey).Filter(
+		r.And(
+			// Not sure why Not().Eq(nil) doesn't work, but this does so going to leave it
+			r.Row.Field("assigned_at").Ge(int64ToBytes(0)),
+			r.Row.Field("assigned_at").Le(int64ToBytes(before)),
+		),
+	).Run(db.session)
+	if err != nil {
+		return nil, err
 	}
-	return txs, nil
+
+	var rows []*rethinkTransaction
+	if err := res.All(&rows); err != nil {
+		return nil, err
+	}
+	return fromRethinkTransactions(rows), nil
 }
 
 func (db *RethinkBlockchainDB) DeleteTransactions(txs []*Transaction) error {
@@ -284,9 +303,9 @@ func (db *RethinkBlockchainDB) voteTable() r.Term {
 }
 
 func newRethinkTransaction(tx *Transaction) *rethinkTransaction {
-	var lastAssigned []byte = nil
+	var assignedAt []byte = nil
 	if tx.AssignedAt != nil {
-		lastAssigned = int64ToBytes(tx.AssignedAt.Int64())
+		assignedAt = int64ToBytes(tx.AssignedAt.Int64())
 	}
 	var cellAddress *rethinkCellAddress = nil
 	if tx.CellAddress != nil {
@@ -306,21 +325,21 @@ func newRethinkTransaction(tx *Transaction) *rethinkTransaction {
 	return &rethinkTransaction{
 		Hash:        tx.Hash,
 		AssignedTo:  tx.AssignedTo,
-		AssignedAt:  lastAssigned,
+		AssignedAt:  assignedAt,
 		CellAddress: cellAddress,
 		Data:        tx.Data,
 	}
 }
 
 func fromRethinkTransaction(tx *rethinkTransaction) *Transaction {
-	var lastAssigned *big.Int = nil
-	if tx.AssignedAt != nil {
-		lastAssigned = big.NewInt(bytesToInt64(tx.AssignedAt))
+	var assignedAt *big.Int = nil
+	if tx.AssignedAt != nil && len(tx.AssignedAt) == 8 {
+		assignedAt = big.NewInt(bytesToInt64(tx.AssignedAt))
 	}
 	var cellAddress *CellAddress = nil
 	if tx.CellAddress != nil {
 		var verId *big.Int = nil
-		if tx.CellAddress.VerId != nil {
+		if tx.CellAddress.VerId != nil && len(tx.CellAddress.VerId) == 8 {
 			verId = big.NewInt(bytesToInt64(tx.CellAddress.VerId))
 		}
 
@@ -335,11 +354,19 @@ func fromRethinkTransaction(tx *rethinkTransaction) *Transaction {
 	return &Transaction{
 		Hash:        tx.Hash,
 		AssignedTo:  tx.AssignedTo,
-		AssignedAt:  lastAssigned,
+		AssignedAt:  assignedAt,
 		CellAddress: cellAddress,
 		Data:        tx.Data,
 	}
 
+}
+
+func fromRethinkTransactions(rethinkTxs []*rethinkTransaction) []*Transaction {
+	txs := make([]*Transaction, len(rethinkTxs))
+	for i, row := range rethinkTxs {
+		txs[i] = fromRethinkTransaction(row)
+	}
+	return txs
 }
 
 func newRethinkBlock(b *Block) *rethinkBlock {
@@ -367,7 +394,7 @@ func newRethinkBlock(b *Block) *rethinkBlock {
 
 func fromRethinkBlock(b *rethinkBlock) *Block {
 	var createdAt *big.Int = nil
-	if b.CreatedAt != nil {
+	if b.CreatedAt != nil && len(b.CreatedAt) == 8 {
 		createdAt = big.NewInt(bytesToInt64(b.CreatedAt))
 	}
 
@@ -406,7 +433,7 @@ func newRethinkVote(v *Vote) *rethinkVote {
 
 func fromRethinkVote(v *rethinkVote) *Vote {
 	var votedAt *big.Int = nil
-	if v.VotedAt != nil {
+	if v.VotedAt != nil && len(v.VotedAt) == 8 {
 		votedAt = big.NewInt(bytesToInt64(v.VotedAt))
 	}
 

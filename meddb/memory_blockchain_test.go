@@ -38,6 +38,42 @@ func TestMemoryGetAssignedTransactions(t *testing.T) {
 	assert.Equal(t, otherTx, txs[0])
 }
 
+func TestMemoryGetOldAssignedTransactions(t *testing.T) {
+	db := getMemoryDB(t)
+	pubKey := []byte{69}
+	first := getTestTransaction()
+	second := getTestTransaction()
+	third := getTestTransaction()
+	fourth := getTestTransaction()
+	fifth := getTestTransaction()
+
+	first.AssignedAt = big.NewInt(69)
+	first.AssignedTo = []byte{123} // Not same assigned to
+	second.AssignedAt = big.NewInt(69)
+	second.AssignedTo = pubKey
+	third.AssignedAt = big.NewInt(70)
+	third.AssignedTo = pubKey
+	fourth.AssignedAt = big.NewInt(74)
+	fourth.AssignedTo = pubKey
+	fifth.AssignedAt = nil
+	fifth.AssignedTo = pubKey
+
+	db.backlogTable = map[string]*Transaction{
+		"first":  first,
+		"second": second,
+		"third":  third,
+		"fourth": fourth,
+		"fifth":  fifth,
+	}
+
+	txs, err := db.GetOldAssignedTransactions(pubKey, 70)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(txs))
+	expected := []*Transaction{second, third}
+	assert.Subset(t, expected, txs)
+	assert.Subset(t, txs, expected)
+}
+
 func TestMemoryDeleteTransactions(t *testing.T) {
 	db := getMemoryDB(t)
 	tx := getTestTransaction()

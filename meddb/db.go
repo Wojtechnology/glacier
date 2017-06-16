@@ -10,6 +10,8 @@ type BlockchainDB interface {
 	WriteTransaction(*Transaction) error
 	// Returns transactions currently assigned to given node from backlog table
 	GetAssignedTransactions([]byte) ([]*Transaction, error)
+	// Returns transactions currently assigned to given node older than given data (no order)
+	GetOldAssignedTransactions([]byte, int64) ([]*Transaction, error)
 	// Deletes given transactions from backlog table
 	DeleteTransactions([]*Transaction) error
 

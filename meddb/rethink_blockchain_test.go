@@ -61,6 +61,44 @@ func TestRethinkGetAssignedTransactions(t *testing.T) {
 	assert.Equal(t, otherTx, txs[0])
 }
 
+func TestRethinkGetOldAssignedTransactions(t *testing.T) {
+	db := getRethinkDB(t)
+	defer rethinkDeleteBacklog(db)
+
+	pubKey := []byte{69}
+	first := getTestTransaction()
+	second := getTestTransaction()
+	third := getTestTransaction()
+	fourth := getTestTransaction()
+	fifth := getTestTransaction()
+
+	first.AssignedAt = big.NewInt(69)
+	first.AssignedTo = []byte{123} // Not same assigned to
+	second.AssignedAt = big.NewInt(69)
+	second.AssignedTo = pubKey
+	third.AssignedAt = big.NewInt(70)
+	third.AssignedTo = pubKey
+	fourth.AssignedAt = big.NewInt(74)
+	fourth.AssignedTo = pubKey
+	fifth.AssignedAt = nil
+	fifth.AssignedTo = pubKey
+
+	first.Hash = []byte("first")
+	second.Hash = []byte("second")
+	third.Hash = []byte("third")
+	fourth.Hash = []byte("fourth")
+	fifth.Hash = []byte("fifth")
+
+	rethinkWriteToBacklog(t, db, []*Transaction{first, second, third, fourth, fifth})
+
+	res, err := db.GetOldAssignedTransactions(pubKey, 70)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(res))
+	expected := []*Transaction{second, third}
+	assert.Subset(t, expected, res)
+	assert.Subset(t, res, expected)
+}
+
 func TestRethinkDeleteTransactions(t *testing.T) {
 	db := getRethinkDB(t)
 	defer rethinkDeleteBacklog(db)
@@ -95,6 +133,7 @@ func TestRethinkWriteBlock(t *testing.T) {
 
 func TestRethinkGetOldestBlocks(t *testing.T) {
 	db := getRethinkDB(t)
+	defer rethinkDeleteBlocks(db)
 	first := getTestBlock()
 	second := getTestBlock()
 	third := getTestBlock()
@@ -138,6 +177,7 @@ func TestRethinkWriteVote(t *testing.T) {
 
 func TestRethinkGetRecentVotes(t *testing.T) {
 	db := getRethinkDB(t)
+	defer rethinkDeleteVotes(db)
 	first := getTestVote()
 	second := getTestVote()
 	third := getTestVote()
