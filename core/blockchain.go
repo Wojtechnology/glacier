@@ -54,6 +54,15 @@ func (bc *Blockchain) GetMyTransactions() ([]*Transaction, error) {
 	return txs, nil
 }
 
+// Proxy to db to delete transactions from backlog.
+func (bc *Blockchain) DeleteTransactions(txs []*Transaction) error {
+	dbTxs := make([]*meddb.Transaction, len(txs))
+	for i, tx := range txs {
+		dbTxs[i] = tx.toDBTransaction()
+	}
+	return bc.db.DeleteTransactions(dbTxs)
+}
+
 // Builds block from given transactions.
 // Validates transactions, builds and returns block.
 // Returns error if some of the transactions are invalid, error contains the invalid transactions.
@@ -64,7 +73,7 @@ func (bc *Blockchain) BuildBlock(txs []*Transaction) (*Block, error) {
 	// i.e. if len(validTxs) > MIN_BLOCK_SIZE ||
 	//     (timeSinceLastBlock > MAX_TIME && len(validTxs) > 0)
 	if len(txs) == 0 {
-		// TODO: Raise error here
+		// TODO: Raise error here, should never be called with zero transactions
 		return nil, nil
 	}
 
