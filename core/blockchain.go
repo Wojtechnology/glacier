@@ -3,8 +3,8 @@ package core
 import (
 	"math/big"
 	"math/rand"
-	"time"
 
+	"github.com/wojtechnology/glacier/common"
 	"github.com/wojtechnology/glacier/meddb"
 )
 
@@ -29,7 +29,7 @@ func NewBlockchain(db meddb.BlockchainDB, me *Node, federation []*Node) *Blockch
 
 // Adds transaction to blockchain backlog.
 func (bc *Blockchain) AddTransaction(tx *Transaction) error {
-	now := time.Now().UTC().UnixNano()
+	now := common.Now()
 	tx.AssignedTo = bc.randomAssignee(now).PubKey
 	tx.AssignedAt = big.NewInt(now)
 
@@ -86,7 +86,7 @@ func (bc *Blockchain) BuildBlock(txs []*Transaction) (*Block, error) {
 	// Create block out of transactions
 	b := &Block{
 		Transactions: txs,
-		CreatedAt:    big.NewInt(now()),
+		CreatedAt:    big.NewInt(common.Now()),
 		Creator:      bc.me.PubKey,
 		Voters:       voters,
 	}
@@ -109,7 +109,7 @@ func (bc *Blockchain) WriteBlock(b *Block) error {
 func (bc *Blockchain) BuildVote(blockId, prevBlockId []byte, value bool) (*Vote, error) {
 	v := &Vote{
 		Voter:     bc.me.PubKey,
-		VotedAt:   big.NewInt(now()),
+		VotedAt:   big.NewInt(common.Now()),
 		PrevBlock: prevBlockId,
 		NextBlock: blockId,
 		Value:     value,
@@ -136,8 +136,4 @@ func (bc *Blockchain) WriteVote(v *Vote) error {
 func (bc *Blockchain) randomAssignee(seed int64) *Node {
 	rand.Seed(seed)
 	return bc.federation[rand.Intn(len(bc.federation))]
-}
-
-func now() int64 {
-	return time.Now().UTC().UnixNano()
 }
