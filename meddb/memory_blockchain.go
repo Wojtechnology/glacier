@@ -56,17 +56,14 @@ func (db *MemoryBlockchainDB) GetAssignedTransactions(pubKey []byte) ([]*Transac
 }
 
 // Note: This is not performant, do not use in prod
-func (db *MemoryBlockchainDB) GetOldAssignedTransactions(pubKey []byte,
-	before int64) ([]*Transaction, error) {
+func (db *MemoryBlockchainDB) GetStaleTransactions(before int64) ([]*Transaction, error) {
 
 	db.backlogLock.Lock()
 	defer db.backlogLock.Unlock()
 
 	txs := make([]*Transaction, 0)
 	for _, tx := range db.backlogTable {
-		if bytes.Equal(tx.AssignedTo, pubKey) && tx.AssignedAt != nil &&
-			tx.AssignedAt.Int64() <= before {
-
+		if tx.AssignedAt != nil && tx.AssignedAt.Int64() <= before {
 			txs = append(txs, tx.Clone())
 		}
 	}

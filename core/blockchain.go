@@ -46,12 +46,16 @@ func (bc *Blockchain) GetMyTransactions() ([]*Transaction, error) {
 	if err != nil {
 		return nil, err
 	}
+	return fromDBTransactions(dbTxs), nil
+}
 
-	txs := make([]*Transaction, len(dbTxs))
-	for i, dbTx := range dbTxs {
-		txs[i] = fromDBTransaction(dbTx)
+// Returns list of transactions that are at least staleAge old from backlog.
+func (bc *Blockchain) GetStaleTransactions(staleAge int64) ([]*Transaction, error) {
+	dbTxs, err := bc.db.GetStaleTransactions(common.Now() - staleAge)
+	if err != nil {
+		return nil, err
 	}
-	return txs, nil
+	return fromDBTransactions(dbTxs), nil
 }
 
 // Proxy to db to delete transactions from backlog.

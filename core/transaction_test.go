@@ -21,7 +21,7 @@ func TestDBTransactionMapper(t *testing.T) {
 		},
 		Data: []byte{69},
 	}
-	hash := rlpHash(tx)
+	hash := rlpHash(&transactionBody{CellAddress: tx.CellAddress, Data: tx.Data})
 
 	expected := &meddb.Transaction{
 		Hash: hash.Bytes(),
@@ -46,7 +46,7 @@ func TestDBTransactionMapperEmpty(t *testing.T) {
 	tx := &Transaction{
 		CellAddress: &CellAddress{},
 	}
-	hash := rlpHash(tx)
+	hash := rlpHash(&transactionBody{CellAddress: tx.CellAddress, Data: tx.Data})
 
 	expected := &meddb.Transaction{
 		Hash:        hash.Bytes(),

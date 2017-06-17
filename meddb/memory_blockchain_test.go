@@ -38,9 +38,8 @@ func TestMemoryGetAssignedTransactions(t *testing.T) {
 	assert.Equal(t, otherTx, txs[0])
 }
 
-func TestMemoryGetOldAssignedTransactions(t *testing.T) {
+func TestMemoryGetStaleTransactions(t *testing.T) {
 	db := getMemoryDB(t)
-	pubKey := []byte{69}
 	first := getTestTransaction()
 	second := getTestTransaction()
 	third := getTestTransaction()
@@ -50,13 +49,9 @@ func TestMemoryGetOldAssignedTransactions(t *testing.T) {
 	first.AssignedAt = big.NewInt(69)
 	first.AssignedTo = []byte{123} // Not same assigned to
 	second.AssignedAt = big.NewInt(69)
-	second.AssignedTo = pubKey
 	third.AssignedAt = big.NewInt(70)
-	third.AssignedTo = pubKey
 	fourth.AssignedAt = big.NewInt(74)
-	fourth.AssignedTo = pubKey
 	fifth.AssignedAt = nil
-	fifth.AssignedTo = pubKey
 
 	db.backlogTable = map[string]*Transaction{
 		"first":  first,
@@ -66,10 +61,10 @@ func TestMemoryGetOldAssignedTransactions(t *testing.T) {
 		"fifth":  fifth,
 	}
 
-	txs, err := db.GetOldAssignedTransactions(pubKey, 70)
+	txs, err := db.GetStaleTransactions(70)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(txs))
-	expected := []*Transaction{second, third}
+	assert.Equal(t, 3, len(txs))
+	expected := []*Transaction{first, second, third}
 	assert.Subset(t, expected, txs)
 	assert.Subset(t, txs, expected)
 }

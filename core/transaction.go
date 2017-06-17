@@ -24,9 +24,14 @@ type Transaction struct {
 // Transaction API
 // ---------------
 
+// Part of transaction used in hash
+type transactionBody struct {
+	CellAddress *CellAddress
+	Data        []byte
+}
+
 func (tx *Transaction) Hash() Hash {
-	// TODO(wojtek): probably leave out AssignedTo, AssignedAt
-	return rlpHash(tx)
+	return rlpHash(&transactionBody{CellAddress: tx.CellAddress, Data: tx.Data})
 }
 
 func (tx *Transaction) Valid() bool {
@@ -70,6 +75,14 @@ func fromDBTransaction(tx *meddb.Transaction) *Transaction {
 		CellAddress: cellAddress,
 		Data:        tx.Data,
 	}
+}
+
+func fromDBTransactions(dbTxs []*meddb.Transaction) []*Transaction {
+	txs := make([]*Transaction, len(dbTxs))
+	for i, dbTx := range dbTxs {
+		txs[i] = fromDBTransaction(dbTx)
+	}
+	return txs
 }
 
 // ---------------

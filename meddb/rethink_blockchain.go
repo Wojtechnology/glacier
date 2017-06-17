@@ -165,13 +165,12 @@ func (db *RethinkBlockchainDB) GetAssignedTransactions(pubKey []byte) ([]*Transa
 	return fromRethinkTransactions(rows), nil
 }
 
-func (db *RethinkBlockchainDB) GetOldAssignedTransactions(pubKey []byte,
-	before int64) ([]*Transaction, error) {
+func (db *RethinkBlockchainDB) GetStaleTransactions(before int64) ([]*Transaction, error) {
 
 	db.lock.Lock()
 	defer db.lock.Unlock()
 
-	res, err := db.backlogTable().GetAllByIndex("assigned_to", pubKey).Filter(
+	res, err := db.backlogTable().Filter(
 		r.And(
 			// Not sure why Not().Eq(nil) doesn't work, but this does so going to leave it
 			r.Row.Field("assigned_at").Ge(int64ToBytes(0)),

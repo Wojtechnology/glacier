@@ -18,7 +18,7 @@ func TestDBBlockMapper(t *testing.T) {
 		Voters:       [][]byte{[]byte{45}},
 	}
 	hash := rlpHash(b)
-	txHash := rlpHash(tx)
+	txHash := rlpHash(&transactionBody{CellAddress: tx.CellAddress, Data: tx.Data})
 
 	expected := &meddb.Block{
 		Hash: hash.Bytes(),
