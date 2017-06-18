@@ -68,8 +68,7 @@ func (bc *Blockchain) DeleteTransactions(txs []*Transaction) error {
 }
 
 // Builds block from given transactions.
-// Validates transactions, builds and returns block.
-// Returns error if some of the transactions are invalid, error contains the invalid transactions.
+// DOES NOT VALIDATE TRANSACTIONS. That must be done before.
 func (bc *Blockchain) BuildBlock(txs []*Transaction) (*Block, error) {
 	if len(txs) == 0 {
 		// TODO: Raise error here, should never be called with zero transactions
@@ -114,7 +113,8 @@ func (bc *Blockchain) GetBlocks(blockIds []Hash) ([]*Block, error) {
 	return fromDBBlocks(dbBs), nil
 }
 
-// Returns `limit` blocks from blocks table starting at given timestamp
+// Returns `limit` blocks from blocks table starting at given timestamp, sorted by increasing
+// CreatedAt.
 func (bc *Blockchain) GetOldestBlocks(after int64, limit int) ([]*Block, error) {
 	dbBs, err := bc.db.GetOldestBlocks(after, limit)
 	if err != nil {
@@ -153,7 +153,7 @@ func (bc *Blockchain) GetRecentVotes() ([]*Vote, error) {
 		return nil, err
 	}
 
-	if len(dbVs) == 2 && dbVs[0].VotedAt == dbVs[1].VotedAt {
+	if len(dbVs) == 2 && dbVs[0].VotedAt.Cmp(dbVs[1].VotedAt) == 0 {
 		// This rarely happens and that first call was a small optimization to only have to make
 		// one query in most cases.
 		dbVs, err = bc.db.GetVotes(bc.me.PubKey, dbVs[0].VotedAt.Int64())

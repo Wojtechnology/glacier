@@ -188,6 +188,13 @@ func TestRethinkGetOldestBlocks(t *testing.T) {
 	assert.Equal(t, third, res[1])
 }
 
+func TestRethinkGetOldestBlocksEmpty(t *testing.T) {
+	db := getRethinkDB(t)
+	res, err := db.GetOldestBlocks(70, 2)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(res))
+}
+
 func TestRethinkWriteVote(t *testing.T) {
 	db := getRethinkDB(t)
 	defer rethinkDeleteVotes(db)
@@ -254,6 +261,13 @@ func TestRethinkGetRecentVotes(t *testing.T) {
 	assert.Equal(t, 2, len(res))
 	assert.Equal(t, third, res[0])
 	assert.Equal(t, second, res[1])
+}
+
+func TestRethinkGetRecentVotesEmpty(t *testing.T) {
+	db := getRethinkDB(t)
+	res, err := db.GetRecentVotes([]byte{212}, 2)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(res))
 }
 
 // ------------

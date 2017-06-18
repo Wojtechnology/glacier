@@ -121,7 +121,10 @@ func (db *MemoryBlockchainDB) GetOldestBlocks(start int64, limit int) ([]*Block,
 		return candidates[i].CreatedAt.Int64() < candidates[j].CreatedAt.Int64()
 	})
 
-	return candidates[:limit], nil
+	if len(candidates) > limit {
+		candidates = candidates[:limit]
+	}
+	return candidates, nil
 }
 
 func (db *MemoryBlockchainDB) WriteVote(v *Vote) error {
@@ -167,5 +170,8 @@ func (db *MemoryBlockchainDB) GetRecentVotes(pubKey []byte, limit int) ([]*Vote,
 		return candidates[i].VotedAt.Int64() > candidates[j].VotedAt.Int64()
 	})
 
-	return candidates[:limit], nil
+	if len(candidates) > limit {
+		candidates = candidates[:limit]
+	}
+	return candidates, nil
 }

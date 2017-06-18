@@ -60,7 +60,7 @@ func (tx *Transaction) toDBTransaction() *meddb.Transaction {
 
 func fromDBTransaction(tx *meddb.Transaction) *Transaction {
 	var lastAssigned *big.Int = nil
-	if tx.AssignedTo != nil {
+	if tx.AssignedAt != nil {
 		lastAssigned = big.NewInt(tx.AssignedAt.Int64())
 	}
 

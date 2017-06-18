@@ -155,6 +155,13 @@ func TestMemoryGetOldestBlocks(t *testing.T) {
 	assert.Equal(t, third, res[1])
 }
 
+func TestMemoryGetOldestBlocksEmpty(t *testing.T) {
+	db := getMemoryDB(t)
+	res, err := db.GetOldestBlocks(70, 2)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(res))
+}
+
 func TestMemoryWriteVote(t *testing.T) {
 	db := getMemoryDB(t)
 	v := getTestVote()
@@ -215,6 +222,13 @@ func TestMemoryGetRecentVotes(t *testing.T) {
 	assert.Equal(t, 2, len(res))
 	assert.Equal(t, third, res[0])
 	assert.Equal(t, second, res[1])
+}
+
+func TestMemoryGetRecentVotesEmpty(t *testing.T) {
+	db := getMemoryDB(t)
+	res, err := db.GetRecentVotes([]byte{212}, 2)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, len(res))
 }
 
 // -------
