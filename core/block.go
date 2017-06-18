@@ -68,3 +68,11 @@ func fromDBBlock(b *meddb.Block) *Block {
 		Voters:       b.Voters,
 	}
 }
+
+func fromDBBlocks(dbBs []*meddb.Block) []*Block {
+	bs := make([]*Block, len(dbBs))
+	for i, dbB := range dbBs {
+		bs[i] = fromDBBlock(dbB)
+	}
+	return bs
+}

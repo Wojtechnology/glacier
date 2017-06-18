@@ -1,6 +1,8 @@
 package meddb
 
 import (
+	"errors"
+	"fmt"
 	"math"
 	"math/big"
 	"sync"
@@ -220,6 +222,37 @@ func (db *RethinkBlockchainDB) WriteBlock(b *Block) error {
 	return nil
 }
 
+func (db *RethinkBlockchainDB) GetBlocks(blockIds [][]byte) ([]*Block, error) {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	ids := make([]interface{}, len(blockIds)) // Why do I have to do this?
+	for i, blockId := range blockIds {
+		ids[i] = blockId
+	}
+
+	res, err := db.blockTable().GetAll(ids...).Run(db.session)
+	if err != nil {
+		return nil, err
+	}
+
+	var rows []*rethinkBlock
+	if err := res.All(&rows); err != nil {
+		return nil, err
+	}
+
+	if len(rows) != len(blockIds) {
+		foundIds := make([][]byte, len(rows))
+		for i, row := range rows {
+			foundIds[i] = row.Hash
+		}
+		return nil, errors.New(fmt.Sprintf("Some blocks not found. Found: %v, All %v\n",
+			foundIds, blockIds))
+	}
+
+	return fromRethinkBlocks(rows), nil
+}
+
 func (db *RethinkBlockchainDB) GetOldestBlocks(start int64, limit int) ([]*Block, error) {
 	db.lock.Lock()
 	defer db.lock.Unlock()
@@ -238,11 +271,7 @@ func (db *RethinkBlockchainDB) GetOldestBlocks(start int64, limit int) ([]*Block
 		return nil, err
 	}
 
-	bs := make([]*Block, len(rows))
-	for i, row := range rows {
-		bs[i] = fromRethinkBlock(row)
-	}
-	return bs, nil
+	return fromRethinkBlocks(rows), nil
 }
 
 func (db *RethinkBlockchainDB) WriteVote(v *Vote) error {
@@ -429,6 +458,14 @@ func fromRethinkBlock(b *rethinkBlock) *Block {
 	}
 }
 
+func fromRethinkBlocks(rethinkBs []*rethinkBlock) []*Block {
+	bs := make([]*Block, len(rethinkBs))
+	for i, row := range rethinkBs {
+		bs[i] = fromRethinkBlock(row)
+	}
+	return bs
+}
+
 func newRethinkVote(v *Vote) *rethinkVote {
 	var votedAt []byte = nil
 	if v.VotedAt != nil {
@@ -461,9 +498,9 @@ func fromRethinkVote(v *rethinkVote) *Vote {
 	}
 }
 
-func fromRethinkVotes(rethinkTxs []*rethinkVote) []*Vote {
-	vs := make([]*Vote, len(rethinkTxs))
-	for i, row := range rethinkTxs {
+func fromRethinkVotes(rethinkVs []*rethinkVote) []*Vote {
+	vs := make([]*Vote, len(rethinkVs))
+	for i, row := range rethinkVs {
 		vs[i] = fromRethinkVote(row)
 	}
 	return vs

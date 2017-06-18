@@ -48,6 +48,7 @@ func addBlock(bc *core.Blockchain, s *blockLoopState) error {
 	}
 	s.lastBlockNS = nowNS
 
+	// TODO: Validate transactions
 	b, err := bc.BuildBlock(txs)
 	if err != nil {
 		// TODO: Handle case where there are invalid transactions and delete them from backlog

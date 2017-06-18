@@ -14,7 +14,7 @@ type CellAddress struct {
 }
 
 type Transaction struct {
-	AssignedTo  []byte
+	AssignedTo  []byte // TODO: Make more strict type for public keys
 	AssignedAt  *big.Int
 	CellAddress *CellAddress
 	Data        []byte

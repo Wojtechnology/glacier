@@ -2,6 +2,8 @@ package meddb
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"sort"
 	"sync"
 )
@@ -88,6 +90,20 @@ func (db *MemoryBlockchainDB) WriteBlock(b *Block) error {
 
 	db.blockTable[string(b.Hash)] = b.Clone()
 	return nil
+}
+
+func (db *MemoryBlockchainDB) GetBlocks(blockIds [][]byte) ([]*Block, error) {
+	db.blockLock.Lock()
+	defer db.blockLock.Unlock()
+
+	bs := make([]*Block, len(blockIds))
+	for i, blockId := range blockIds {
+		var ok bool
+		if bs[i], ok = db.blockTable[string(blockId)]; !ok {
+			return nil, errors.New(fmt.Sprintf("Block not found %v\n", blockId))
+		}
+	}
+	return bs, nil
 }
 
 func (db *MemoryBlockchainDB) GetOldestBlocks(start int64, limit int) ([]*Block, error) {

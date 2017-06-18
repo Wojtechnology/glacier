@@ -17,7 +17,9 @@ type BlockchainDB interface {
 
 	// Writes block to block table
 	WriteBlock(*Block) error
-	// Returns k olds blocks from block table starting at given timestamp sorted by increasing
+	// Returns blocks from block table by block ids
+	GetBlocks([][]byte) ([]*Block, error)
+	// Returns k oldest blocks from block table starting at given timestamp sorted by increasing
 	// CreatedAt timestamp.
 	GetOldestBlocks(int64, int) ([]*Block, error)
 

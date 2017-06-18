@@ -1,6 +1,7 @@
 package meddb
 
 import (
+	"errors"
 	"math/big"
 	"testing"
 
@@ -124,6 +125,37 @@ func TestRethinkWriteBlock(t *testing.T) {
 
 	assert.Equal(t, 1, len(bs))
 	assert.Equal(t, b, bs[0])
+}
+
+func TestRethinkGetBlocks(t *testing.T) {
+	db := getRethinkDB(t)
+	defer rethinkDeleteBlocks(db)
+	first := getTestBlock()
+	second := getTestBlock()
+	third := getTestBlock()
+
+	// Just so they're different at equality check
+	first.Creator = []byte("me")
+	second.Creator = []byte("you")
+	third.Creator = []byte("her")
+
+	first.Hash = []byte("first")
+	second.Hash = []byte("second")
+	third.Hash = []byte("third")
+
+	rethinkWriteToBlock(t, db, []*Block{first, second, third})
+
+	res, err := db.GetBlocks([][]byte{[]byte("second"), []byte("first")})
+	assert.Nil(t, err)
+	assert.Equal(t, second, res[0])
+	assert.Equal(t, first, res[1])
+}
+
+func TestRethinkGetBlocksNotFound(t *testing.T) {
+	db := getRethinkDB(t)
+
+	_, err := db.GetBlocks([][]byte{[]byte("first")})
+	assert.IsType(t, errors.New(""), err)
 }
 
 func TestRethinkGetOldestBlocks(t *testing.T) {

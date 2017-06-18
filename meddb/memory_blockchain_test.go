@@ -1,6 +1,7 @@
 package meddb
 
 import (
+	"errors"
 	"math/big"
 	"testing"
 
@@ -93,6 +94,36 @@ func TestMemoryWriteBlock(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(db.blockTable))
 	assert.Equal(t, b, db.blockTable[string(b.Hash)])
+}
+
+func TestMemoryGetBlocks(t *testing.T) {
+	db := getMemoryDB(t)
+	first := getTestBlock()
+	second := getTestBlock()
+	third := getTestBlock()
+
+	// Just so they're different at equality check
+	first.Creator = []byte("me")
+	second.Creator = []byte("you")
+	third.Creator = []byte("her")
+
+	db.blockTable = map[string]*Block{
+		"first":  first,
+		"second": second,
+		"third":  third,
+	}
+
+	res, err := db.GetBlocks([][]byte{[]byte("second"), []byte("first")})
+	assert.Nil(t, err)
+	assert.Equal(t, second, res[0])
+	assert.Equal(t, first, res[1])
+}
+
+func TestMemoryGetBlocksNotFound(t *testing.T) {
+	db := getMemoryDB(t)
+
+	_, err := db.GetBlocks([][]byte{[]byte("first")})
+	assert.IsType(t, errors.New(""), err)
 }
 
 func TestMemoryGetOldestBlocks(t *testing.T) {

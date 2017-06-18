@@ -71,11 +71,6 @@ func (bc *Blockchain) DeleteTransactions(txs []*Transaction) error {
 // Validates transactions, builds and returns block.
 // Returns error if some of the transactions are invalid, error contains the invalid transactions.
 func (bc *Blockchain) BuildBlock(txs []*Transaction) (*Block, error) {
-	// TODO: Validate transactions
-
-	// TODO: Have some rule for this in the config
-	// i.e. if len(validTxs) > MIN_BLOCK_SIZE ||
-	//     (timeSinceLastBlock > MAX_TIME && len(validTxs) > 0)
 	if len(txs) == 0 {
 		// TODO: Raise error here, should never be called with zero transactions
 		return nil, nil
@@ -103,14 +98,33 @@ func (bc *Blockchain) BuildBlock(txs []*Transaction) (*Block, error) {
 // Assumes that block and all of its transactions have been verified.
 // Also, assumes that the block has been signed by this node.
 func (bc *Blockchain) WriteBlock(b *Block) error {
-	if err := bc.db.WriteBlock(b.toDBBlock()); err != nil {
-		return err
+	return bc.db.WriteBlock(b.toDBBlock())
+}
+
+// Returns blocks from blocks table for the given blockIds
+func (bc *Blockchain) GetBlocks(blockIds []Hash) ([]*Block, error) {
+	ids := make([][]byte, len(blockIds))
+	for i, blockId := range blockIds {
+		ids[i] = blockId.Bytes()
 	}
-	return nil
+	dbBs, err := bc.db.GetBlocks(ids)
+	if err != nil {
+		return nil, err
+	}
+	return fromDBBlocks(dbBs), nil
+}
+
+// Returns `limit` blocks from blocks table starting at given timestamp
+func (bc *Blockchain) GetOldestBlocks(after int64, limit int) ([]*Block, error) {
+	dbBs, err := bc.db.GetOldestBlocks(after, limit)
+	if err != nil {
+		return nil, err
+	}
+	return fromDBBlocks(dbBs), nil
 }
 
 // Builds and signs vote for particular block, given previous block.
-func (bc *Blockchain) BuildVote(blockId, prevBlockId []byte, value bool) (*Vote, error) {
+func (bc *Blockchain) BuildVote(blockId, prevBlockId Hash, value bool) (*Vote, error) {
 	v := &Vote{
 		Voter:     bc.me.PubKey,
 		VotedAt:   big.NewInt(common.Now()),
@@ -130,6 +144,28 @@ func (bc *Blockchain) WriteVote(v *Vote) error {
 		return err
 	}
 	return nil
+}
+
+// Returns all of the votes with the timestamp of the most recent vote for this node.
+func (bc *Blockchain) GetRecentVotes() ([]*Vote, error) {
+	dbVs, err := bc.db.GetRecentVotes(bc.me.PubKey, 2)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(dbVs) == 2 && dbVs[0].VotedAt == dbVs[1].VotedAt {
+		// This rarely happens and that first call was a small optimization to only have to make
+		// one query in most cases.
+		dbVs, err = bc.db.GetVotes(bc.me.PubKey, dbVs[0].VotedAt.Int64())
+		if err != nil {
+			return nil, err
+		}
+	} else if len(dbVs) > 0 {
+		// Only return the newest one.
+		dbVs = dbVs[:1]
+	}
+
+	return fromDBVotes(dbVs), nil
 }
 
 // -------

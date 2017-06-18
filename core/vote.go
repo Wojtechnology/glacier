@@ -9,8 +9,8 @@ import (
 type Vote struct {
 	Voter     []byte
 	VotedAt   *big.Int
-	PrevBlock []byte
-	NextBlock []byte // Block we are voting on
+	PrevBlock Hash
+	NextBlock Hash // Block we are voting on
 	Value     bool
 }
 
@@ -33,8 +33,8 @@ func (v *Vote) toDBVote() *meddb.Vote {
 		Hash:      v.Hash().Bytes(),
 		Voter:     v.Voter,
 		VotedAt:   votedAt,
-		PrevBlock: v.PrevBlock,
-		NextBlock: v.NextBlock,
+		PrevBlock: v.PrevBlock.Bytes(),
+		NextBlock: v.NextBlock.Bytes(),
 		Value:     v.Value,
 	}
 }
@@ -48,8 +48,16 @@ func fromDBVote(v *meddb.Vote) *Vote {
 	return &Vote{
 		Voter:     v.Voter,
 		VotedAt:   votedAt,
-		PrevBlock: v.PrevBlock,
-		NextBlock: v.NextBlock,
+		PrevBlock: BytesToHash(v.PrevBlock),
+		NextBlock: BytesToHash(v.NextBlock),
 		Value:     v.Value,
 	}
+}
+
+func fromDBVotes(dbVs []*meddb.Vote) []*Vote {
+	vs := make([]*Vote, len(dbVs))
+	for i, dbV := range dbVs {
+		vs[i] = fromDBVote(dbV)
+	}
+	return vs
 }
