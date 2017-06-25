@@ -34,7 +34,7 @@ func (tx *Transaction) Hash() Hash {
 	return rlpHash(&transactionBody{CellAddress: tx.CellAddress, Data: tx.Data})
 }
 
-func (tx *Transaction) Valid() bool {
+func (tx *Transaction) Validate() bool {
 	return true
 }
 

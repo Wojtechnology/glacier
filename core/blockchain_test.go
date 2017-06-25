@@ -10,6 +10,11 @@ import (
 	"github.com/wojtechnology/glacier/meddb"
 )
 
+func assertRecent(t *testing.T, x int64) {
+	assert.True(t, x >= common.Now()-1000*1000)
+	assert.True(t, x <= common.Now())
+}
+
 func TestAddTransaction(t *testing.T) {
 	db, err := meddb.NewMemoryBlockchainDB()
 	assert.Nil(t, err)
@@ -30,8 +35,7 @@ func TestAddTransaction(t *testing.T) {
 	err = bc.AddTransaction(tx)
 	assert.Nil(t, err)
 	assert.Equal(t, other.PubKey, tx.AssignedTo)
-	assert.True(t, tx.AssignedAt.Int64() >= common.Now()-1000*1000)
-	assert.True(t, tx.AssignedAt.Int64() <= common.Now())
+	assertRecent(t, tx.AssignedAt.Int64())
 
 	txs, err := db.GetAssignedTransactions(other.PubKey)
 	assert.Nil(t, err)
@@ -145,8 +149,7 @@ func TestBuildBlock(t *testing.T) {
 	assert.Equal(t, txs, b.Transactions)
 	assert.Equal(t, me.PubKey, b.Creator)
 	assert.Equal(t, [][]byte{other.PubKey}, b.Voters)
-	assert.True(t, b.CreatedAt.Int64() >= common.Now()-1000*1000)
-	assert.True(t, b.CreatedAt.Int64() <= common.Now())
+	assertRecent(t, b.CreatedAt.Int64())
 }
 
 func TestWriteBlock(t *testing.T) {
@@ -224,8 +227,7 @@ func TestBuildVote(t *testing.T) {
 	assert.Equal(t, blockId, v.NextBlock)
 	assert.Equal(t, prevBlockId, v.PrevBlock)
 	assert.Equal(t, value, v.Value)
-	assert.True(t, v.VotedAt.Int64() >= common.Now()-1000*1000)
-	assert.True(t, v.VotedAt.Int64() <= common.Now())
+	assertRecent(t, v.VotedAt.Int64())
 }
 
 func TestWriteVote(t *testing.T) {
