@@ -17,9 +17,20 @@ type Block struct {
 // Block API
 // ---------
 
+type blockBody struct {
+	Transactions []Hash // Contains hashes of all contained transactions
+	Voters       [][]byte
+}
+
 func (b *Block) Hash() Hash {
-	// TODO: Think about this, maybe we want to hash a subset
-	return rlpHash(b)
+	txs := make([]Hash, len(b.Transactions))
+	for i, tx := range b.Transactions {
+		txs[i] = tx.Hash()
+	}
+	return rlpHash(&blockBody{
+		Transactions: txs,
+		Voters:       b.Voters,
+	})
 }
 
 func (b *Block) toDBBlock() *meddb.Block {

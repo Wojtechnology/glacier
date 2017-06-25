@@ -10,21 +10,24 @@ import (
 )
 
 func TestDBBlockMapper(t *testing.T) {
-	tx := &Transaction{Data: []byte{42}}
+	tx := &Transaction{TableName: []byte("cars")}
 	b := &Block{
 		Transactions: []*Transaction{tx},
 		CreatedAt:    big.NewInt(43),
 		Creator:      []byte{44},
 		Voters:       [][]byte{[]byte{45}},
 	}
-	hash := rlpHash(b)
-	txHash := rlpHash(&transactionBody{CellAddress: tx.CellAddress, Data: tx.Data})
+	hash := rlpHash(&blockBody{
+		Transactions: []Hash{tx.Hash()},
+		Voters:       b.Voters,
+	})
+	txHash := rlpHash(&transactionBody{TableName: tx.TableName})
 
 	expected := &meddb.Block{
 		Hash: hash.Bytes(),
 		Transactions: []*meddb.Transaction{&meddb.Transaction{
-			Hash: txHash.Bytes(),
-			Data: []byte{42},
+			Hash:      txHash.Bytes(),
+			TableName: []byte("cars"),
 		}},
 		CreatedAt: big.NewInt(43),
 		Creator:   []byte{44},
@@ -39,7 +42,7 @@ func TestDBBlockMapper(t *testing.T) {
 
 func TestDBBlockMapperEmpty(t *testing.T) {
 	b := &Block{}
-	hash := rlpHash(b)
+	hash := rlpHash(&blockBody{})
 
 	expected := &meddb.Block{
 		Hash: hash.Bytes(),

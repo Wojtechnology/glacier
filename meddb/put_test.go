@@ -13,7 +13,7 @@ func TestAddCol(t *testing.T) {
 
 	err := op.AddCol(colId, nil)
 	assert.Nil(t, err)
-	assertCellsEqual(t, NewCell(rowId, colId, nil), op.cols[string(colId)])
+	assertCellsEqual(t, NewCell(nil), op.cols[string(colId)])
 }
 
 func TestAddColVer(t *testing.T) {
@@ -24,7 +24,7 @@ func TestAddColVer(t *testing.T) {
 
 	err := op.AddColVer(colId, verId, nil)
 	assert.Nil(t, err)
-	assertCellsEqual(t, NewCellVer(rowId, colId, verId, nil), op.cols[string(colId)])
+	assertCellsEqual(t, NewCellVer(verId, nil), op.cols[string(colId)])
 }
 
 func TestAddColAlreadyExists(t *testing.T) {
@@ -61,5 +61,5 @@ func TestFillVer(t *testing.T) {
 
 	var verId int64 = 123
 	op.fillVer(verId)
-	assertCellsEqual(t, NewCellVer(rowId, colId, verId, nil), op.cols[string(colId)])
+	assertCellsEqual(t, NewCellVer(verId, nil), op.cols[string(colId)])
 }

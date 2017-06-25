@@ -48,12 +48,14 @@ func (bt *RethinkBigtable) Put(tableName []byte, op *PutOp) error {
 	op.fillVer(curTimeMillis())
 
 	rethinkCells := make([]interface{}, len(op.cols))
-	for i, cell := range op.cells() {
-		rCell, err := newRethinkCell(cell)
+	i := 0
+	for colId, cell := range op.cols {
+		rCell, err := newRethinkCell(op.rowId, []byte(colId), cell)
 		if err != nil {
 			return err
 		}
 		rethinkCells[i] = rCell
+		i++
 	}
 
 	_, err := r.DB(bt.database).Table(string(tableName)).Insert(rethinkCells, r.InsertOpts{
@@ -153,17 +155,13 @@ func (bt *RethinkBigtable) Get(tableName []byte, op *GetOp) (map[string][]*Cell,
 
 	cells := make(map[string][]*Cell)
 	for _, row := range rows {
-		cell := NewCellVer(
-			row.RowId,
-			row.ColId,
-			bytesToInt64(row.VerId),
-			row.Data,
-		)
+		cell := NewCellVer(bytesToInt64(row.VerId), row.Data)
+		colString := string(row.ColId)
 
-		if _, ok := cells[string(cell.ColId)]; ok {
-			cells[string(cell.ColId)] = append(cells[string(cell.ColId)], cell)
+		if _, ok := cells[colString]; ok {
+			cells[colString] = append(cells[colString], cell)
 		} else {
-			cells[string(cell.ColId)] = []*Cell{cell}
+			cells[colString] = []*Cell{cell}
 		}
 	}
 
@@ -194,23 +192,23 @@ func (bt *RethinkBigtable) CreateTable(tableName []byte) error {
 // Helpers
 // -------
 
-func newRethinkCell(cell *Cell) (*rethinkCell, error) {
-	if cell.RowId == nil || cell.ColId == nil || cell.VerId == nil || cell.Data == nil {
+func newRethinkCell(rowId, colId []byte, cell *Cell) (*rethinkCell, error) {
+	if rowId == nil || colId == nil || cell.VerId == nil || cell.Data == nil {
 		return nil, errors.New(fmt.Sprintf(`Cell is missing rowId, colId, verId or data
 			rowId %v
 			colId %v
 			verId %v
 			data %v
-		`, cell.RowId, cell.ColId, cell.VerId, cell.Data))
+		`, rowId, colId, cell.VerId, cell.Data))
 	}
-	id, err := buildRethinkId(cell.RowId, cell.ColId, cell.VerId)
+	id, err := buildRethinkId(rowId, colId, cell.VerId)
 	if err != nil {
 		return nil, err
 	}
 	return &rethinkCell{
 		ID:    id,
-		RowId: cell.RowId,
-		ColId: cell.ColId,
+		RowId: rowId,
+		ColId: colId,
 		VerId: int64ToBytes(cell.VerId.Int64()),
 		Data:  cell.Data,
 	}, nil

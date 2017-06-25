@@ -23,19 +23,18 @@ type RethinkBlockchainDB struct {
 	database string
 }
 
-type rethinkCellAddress struct {
-	TableName []byte `gorethink:"table_name"`
-	RowId     []byte `gorethink:"row_id"`
-	ColId     []byte `gorethink:"col_id"`
-	VerId     []byte `gorethink:"ver_id"`
+type rethinkPartialCell struct {
+	Data  []byte `gorethink:"data"`
+	VerId []byte `gorethink:"ver_id"`
 }
 
 type rethinkTransaction struct {
-	Hash        []byte              `gorethink:"id"`
-	AssignedTo  []byte              `gorethink:"assigned_to"`
-	AssignedAt  []byte              `gorethink:"assigned_at"`
-	CellAddress *rethinkCellAddress `gorethink:"cell_address"`
-	Data        []byte              `gorethink:"data"`
+	Hash       []byte                         `gorethink:"id"`
+	AssignedTo []byte                         `gorethink:"assigned_to"`
+	AssignedAt []byte                         `gorethink:"assigned_at"`
+	TableName  []byte                         `gorethink:"table_name"`
+	RowId      []byte                         `gorethink:"row_id"`
+	Cols       map[string]*rethinkPartialCell `gorethink:"cols"`
 }
 
 type rethinkBlock struct {
@@ -345,32 +344,48 @@ func (db *RethinkBlockchainDB) voteTable() r.Term {
 	return r.DB(db.database).Table(rethinkVoteName)
 }
 
+func newRethinkPartialCell(cell *Cell) *rethinkPartialCell {
+	var verId []byte = nil
+	if cell.VerId != nil {
+		verId = int64ToBytes(cell.VerId.Int64())
+	}
+	return &rethinkPartialCell{
+		Data:  cell.Data,
+		VerId: verId,
+	}
+}
+
+func fromRethinkPartialCell(cell *rethinkPartialCell) *Cell {
+	var verId *big.Int = nil
+	if cell.VerId != nil {
+		verId = big.NewInt(bytesToInt64(cell.VerId))
+	}
+	return &Cell{
+		Data:  cell.Data,
+		VerId: verId,
+	}
+}
+
 func newRethinkTransaction(tx *Transaction) *rethinkTransaction {
 	var assignedAt []byte = nil
 	if tx.AssignedAt != nil {
 		assignedAt = int64ToBytes(tx.AssignedAt.Int64())
 	}
-	var cellAddress *rethinkCellAddress = nil
-	if tx.CellAddress != nil {
-		var verId []byte = nil
-		if tx.CellAddress.VerId != nil {
-			verId = int64ToBytes(tx.CellAddress.VerId.Int64())
-		}
-
-		cellAddress = &rethinkCellAddress{
-			TableName: tx.CellAddress.TableName,
-			RowId:     tx.CellAddress.RowId,
-			ColId:     tx.CellAddress.ColId,
-			VerId:     verId,
+	var cols map[string]*rethinkPartialCell = nil
+	if tx.Cols != nil {
+		cols = make(map[string]*rethinkPartialCell)
+		for colId, cell := range tx.Cols {
+			cols[colId] = newRethinkPartialCell(cell)
 		}
 	}
 
 	return &rethinkTransaction{
-		Hash:        tx.Hash,
-		AssignedTo:  tx.AssignedTo,
-		AssignedAt:  assignedAt,
-		CellAddress: cellAddress,
-		Data:        tx.Data,
+		Hash:       tx.Hash,
+		AssignedTo: tx.AssignedTo,
+		AssignedAt: assignedAt,
+		TableName:  tx.TableName,
+		RowId:      tx.RowId,
+		Cols:       cols,
 	}
 }
 
@@ -379,27 +394,21 @@ func fromRethinkTransaction(tx *rethinkTransaction) *Transaction {
 	if tx.AssignedAt != nil && len(tx.AssignedAt) == 8 {
 		assignedAt = big.NewInt(bytesToInt64(tx.AssignedAt))
 	}
-	var cellAddress *CellAddress = nil
-	if tx.CellAddress != nil {
-		var verId *big.Int = nil
-		if tx.CellAddress.VerId != nil && len(tx.CellAddress.VerId) == 8 {
-			verId = big.NewInt(bytesToInt64(tx.CellAddress.VerId))
-		}
-
-		cellAddress = &CellAddress{
-			TableName: tx.CellAddress.TableName,
-			RowId:     tx.CellAddress.RowId,
-			ColId:     tx.CellAddress.ColId,
-			VerId:     verId,
+	var cols map[string]*Cell = nil
+	if tx.Cols != nil {
+		cols = make(map[string]*Cell)
+		for colId, cell := range tx.Cols {
+			cols[colId] = fromRethinkPartialCell(cell)
 		}
 	}
 
 	return &Transaction{
-		Hash:        tx.Hash,
-		AssignedTo:  tx.AssignedTo,
-		AssignedAt:  assignedAt,
-		CellAddress: cellAddress,
-		Data:        tx.Data,
+		Hash:       tx.Hash,
+		AssignedTo: tx.AssignedTo,
+		AssignedAt: assignedAt,
+		TableName:  tx.TableName,
+		RowId:      tx.RowId,
+		Cols:       cols,
 	}
 
 }

@@ -2,36 +2,54 @@ package core
 
 import (
 	"math/big"
+	"sort"
 
 	"github.com/wojtechnology/glacier/meddb"
 )
 
-type CellAddress struct {
-	TableName []byte
-	RowId     []byte
-	ColId     []byte
-	VerId     *big.Int
+type Cell struct {
+	Data  []byte
+	VerId *big.Int
 }
 
 type Transaction struct {
-	AssignedTo  []byte // TODO: Make more strict type for public keys
-	AssignedAt  *big.Int
-	CellAddress *CellAddress
-	Data        []byte
+	AssignedTo []byte // TODO: Make more strict type for public keys
+	AssignedAt *big.Int
+	TableName  []byte
+	RowId      []byte
+	Cols       map[string]*Cell
 }
 
 // ---------------
 // Transaction API
 // ---------------
 
+type colCell struct {
+	ColId []byte
+	Cell  *Cell
+}
+
 // Part of transaction used in hash
 type transactionBody struct {
-	CellAddress *CellAddress
-	Data        []byte
+	TableName []byte
+	RowId     []byte
+	Cols      []*colCell
 }
 
 func (tx *Transaction) Hash() Hash {
-	return rlpHash(&transactionBody{CellAddress: tx.CellAddress, Data: tx.Data})
+	var cols []*colCell = nil
+	if tx.Cols != nil {
+		cols = make([]*colCell, len(tx.Cols))
+		i := 0
+		for colId, cell := range tx.Cols {
+			cols[i] = &colCell{ColId: []byte(colId), Cell: cell}
+			i++
+		}
+	}
+	sort.Slice(cols, func(i, j int) bool {
+		return string(cols[i].ColId) < string(cols[j].ColId)
+	})
+	return rlpHash(&transactionBody{TableName: tx.TableName, RowId: tx.RowId, Cols: cols})
 }
 
 func (tx *Transaction) Validate() bool {
@@ -43,18 +61,22 @@ func (tx *Transaction) toDBTransaction() *meddb.Transaction {
 	if tx.AssignedAt != nil {
 		lastAssigned = big.NewInt(tx.AssignedAt.Int64())
 	}
-
-	var cellAddress *meddb.CellAddress = nil
-	if tx.CellAddress != nil {
-		cellAddress = tx.CellAddress.toDBCellAddress()
+	var cols map[string]*meddb.Cell = nil
+	if tx.Cols != nil {
+		cols = make(map[string]*meddb.Cell)
+		for colId, cell := range tx.Cols {
+			cols[colId] = toDBCell(cell)
+		}
 	}
+
 	// TODO(wojtek): Maybe make copies here
 	return &meddb.Transaction{
-		Hash:        tx.Hash().Bytes(),
-		AssignedTo:  tx.AssignedTo,
-		AssignedAt:  lastAssigned,
-		CellAddress: cellAddress,
-		Data:        tx.Data,
+		Hash:       tx.Hash().Bytes(),
+		AssignedTo: tx.AssignedTo,
+		AssignedAt: lastAssigned,
+		TableName:  tx.TableName,
+		RowId:      tx.RowId,
+		Cols:       cols,
 	}
 }
 
@@ -63,17 +85,21 @@ func fromDBTransaction(tx *meddb.Transaction) *Transaction {
 	if tx.AssignedAt != nil {
 		lastAssigned = big.NewInt(tx.AssignedAt.Int64())
 	}
-
-	var cellAddress *CellAddress = nil
-	if tx.CellAddress != nil {
-		cellAddress = fromDBCellAddress(tx.CellAddress)
+	var cols map[string]*Cell = nil
+	if tx.Cols != nil {
+		cols = make(map[string]*Cell)
+		for colId, cell := range tx.Cols {
+			cols[colId] = fromDBCell(cell)
+		}
 	}
+
 	// TODO(wojtek): Maybe make copies here
 	return &Transaction{
-		AssignedTo:  tx.AssignedTo,
-		AssignedAt:  lastAssigned,
-		CellAddress: cellAddress,
-		Data:        tx.Data,
+		AssignedTo: tx.AssignedTo,
+		AssignedAt: lastAssigned,
+		TableName:  tx.TableName,
+		RowId:      tx.RowId,
+		Cols:       cols,
 	}
 }
 
@@ -85,34 +111,28 @@ func fromDBTransactions(dbTxs []*meddb.Transaction) []*Transaction {
 	return txs
 }
 
-// ---------------
-// CellAddress API
-// ---------------
+// --------
+// Cell API
+// --------
 
-func (ca *CellAddress) toDBCellAddress() *meddb.CellAddress {
+func toDBCell(cell *Cell) *meddb.Cell {
 	var verId *big.Int = nil
-	if ca.VerId != nil {
-		verId = big.NewInt(ca.VerId.Int64())
+	if cell.VerId != nil {
+		verId = big.NewInt(cell.VerId.Int64())
 	}
-
-	return &meddb.CellAddress{
-		TableName: ca.TableName,
-		RowId:     ca.RowId,
-		ColId:     ca.ColId,
-		VerId:     verId,
+	return &meddb.Cell{
+		Data:  cell.Data,
+		VerId: verId,
 	}
 }
 
-func fromDBCellAddress(ca *meddb.CellAddress) *CellAddress {
+func fromDBCell(cell *meddb.Cell) *Cell {
 	var verId *big.Int = nil
-	if ca.VerId != nil {
-		verId = big.NewInt(ca.VerId.Int64())
+	if cell.VerId != nil {
+		verId = big.NewInt(cell.VerId.Int64())
 	}
-
-	return &CellAddress{
-		TableName: ca.TableName,
-		RowId:     ca.RowId,
-		ColId:     ca.ColId,
-		VerId:     verId,
+	return &Cell{
+		Data:  cell.Data,
+		VerId: verId,
 	}
 }

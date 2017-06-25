@@ -32,19 +32,13 @@ type BlockchainDB interface {
 	GetRecentVotes([]byte, int) ([]*Vote, error)
 }
 
-type CellAddress struct {
-	TableName []byte
-	RowId     []byte
-	ColId     []byte
-	VerId     *big.Int
-}
-
 type Transaction struct {
-	Hash        []byte
-	AssignedTo  []byte // Public key of node this transaction is assigned to
-	AssignedAt  *big.Int
-	CellAddress *CellAddress
-	Data        []byte
+	Hash       []byte
+	AssignedTo []byte // Public key of node this transaction is assigned to
+	AssignedAt *big.Int
+	TableName  []byte
+	RowId      []byte
+	Cols       map[string]*Cell
 }
 
 type Block struct {
@@ -70,27 +64,21 @@ func (tx *Transaction) Clone() *Transaction {
 		lastAssigned = big.NewInt(tx.AssignedAt.Int64())
 	}
 
-	var cellAddress *CellAddress = nil
-	if tx.CellAddress != nil {
-		var verId *big.Int = nil
-		if tx.CellAddress.VerId != nil {
-			verId = tx.CellAddress.VerId
-		}
-
-		cellAddress = &CellAddress{
-			TableName: tx.CellAddress.TableName,
-			RowId:     tx.CellAddress.RowId,
-			ColId:     tx.CellAddress.ColId,
-			VerId:     verId,
+	var cols map[string]*Cell = nil
+	if tx.Cols != nil {
+		cols = make(map[string]*Cell)
+		for colId, cell := range tx.Cols {
+			cols[colId] = cell.Clone()
 		}
 	}
 
 	return &Transaction{
-		Hash:        tx.Hash,
-		AssignedTo:  tx.AssignedTo,
-		AssignedAt:  lastAssigned,
-		CellAddress: cellAddress,
-		Data:        tx.Data,
+		Hash:       tx.Hash,
+		AssignedTo: tx.AssignedTo,
+		AssignedAt: lastAssigned,
+		TableName:  tx.TableName,
+		RowId:      tx.RowId,
+		Cols:       cols,
 	}
 }
 

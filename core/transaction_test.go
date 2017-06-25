@@ -9,31 +9,86 @@ import (
 	"github.com/wojtechnology/glacier/meddb"
 )
 
+func TestTransactionHash(t *testing.T) {
+	tx := &Transaction{
+		AssignedTo: []byte{12},
+		AssignedAt: big.NewInt(420),
+		TableName:  []byte{123},
+		RowId:      []byte{124},
+		Cols: map[string]*Cell{
+			string([]byte{125}): &Cell{
+				VerId: big.NewInt(69),
+				Data:  []byte{70},
+			},
+			string([]byte{69}): &Cell{
+				VerId: big.NewInt(126),
+				Data:  []byte{127},
+			},
+		},
+	}
+
+	expected := rlpHash(&transactionBody{
+		TableName: tx.TableName,
+		RowId:     tx.RowId,
+		Cols: []*colCell{
+			&colCell{
+				ColId: []byte{69},
+				Cell: &Cell{
+					VerId: big.NewInt(126),
+					Data:  []byte{127},
+				},
+			},
+			&colCell{
+				ColId: []byte{125},
+				Cell: &Cell{
+					VerId: big.NewInt(69),
+					Data:  []byte{70},
+				},
+			},
+		},
+	})
+	assert.Equal(t, expected, tx.Hash())
+}
+
 func TestDBTransactionMapper(t *testing.T) {
 	tx := &Transaction{
 		AssignedTo: []byte{12},
 		AssignedAt: big.NewInt(420),
-		CellAddress: &CellAddress{
-			TableName: []byte{42},
-			RowId:     []byte{32},
-			ColId:     []byte{43},
-			VerId:     big.NewInt(4),
+		TableName:  []byte{123},
+		RowId:      []byte{124},
+		Cols: map[string]*Cell{
+			string([]byte{125}): &Cell{
+				VerId: big.NewInt(126),
+				Data:  []byte{127},
+			},
 		},
-		Data: []byte{69},
 	}
-	hash := rlpHash(&transactionBody{CellAddress: tx.CellAddress, Data: tx.Data})
+	hash := rlpHash(&transactionBody{
+		TableName: tx.TableName,
+		RowId:     tx.RowId,
+		Cols: []*colCell{
+			&colCell{
+				ColId: []byte{125},
+				Cell: &Cell{
+					VerId: big.NewInt(126),
+					Data:  []byte{127},
+				},
+			},
+		},
+	})
 
 	expected := &meddb.Transaction{
-		Hash: hash.Bytes(),
-		CellAddress: &meddb.CellAddress{
-			TableName: []byte{42},
-			RowId:     []byte{32},
-			ColId:     []byte{43},
-			VerId:     big.NewInt(4),
+		Hash:      hash.Bytes(),
+		TableName: []byte{123},
+		RowId:     []byte{124},
+		Cols: map[string]*meddb.Cell{
+			string([]byte{125}): &meddb.Cell{
+				VerId: big.NewInt(126),
+				Data:  []byte{127},
+			},
 		},
 		AssignedTo: []byte{12},
 		AssignedAt: big.NewInt(420),
-		Data:       []byte{69},
 	}
 	actual := tx.toDBTransaction()
 	assert.Equal(t, expected, actual)
@@ -43,15 +98,10 @@ func TestDBTransactionMapper(t *testing.T) {
 }
 
 func TestDBTransactionMapperEmpty(t *testing.T) {
-	tx := &Transaction{
-		CellAddress: &CellAddress{},
-	}
-	hash := rlpHash(&transactionBody{CellAddress: tx.CellAddress, Data: tx.Data})
+	tx := &Transaction{}
+	hash := rlpHash(&transactionBody{})
 
-	expected := &meddb.Transaction{
-		Hash:        hash.Bytes(),
-		CellAddress: &meddb.CellAddress{},
-	}
+	expected := &meddb.Transaction{Hash: hash.Bytes()}
 	actual := tx.toDBTransaction()
 	assert.Equal(t, expected, actual)
 

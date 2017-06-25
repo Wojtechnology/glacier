@@ -246,13 +246,14 @@ func getTestTransaction() *Transaction {
 		Hash:       []byte{32},
 		AssignedTo: []byte{42},
 		AssignedAt: big.NewInt(123),
-		CellAddress: &CellAddress{
-			TableName: []byte{52},
-			RowId:     []byte{62},
-			ColId:     []byte{72},
-			VerId:     big.NewInt(234),
+		TableName:  []byte{52},
+		RowId:      []byte{62},
+		Cols: map[string]*Cell{
+			string([]byte{72}): &Cell{
+				Data:  []byte{82},
+				VerId: big.NewInt(234),
+			},
 		},
-		Data: []byte{82},
 	}
 }
 

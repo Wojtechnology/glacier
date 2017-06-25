@@ -45,8 +45,8 @@ func (bt *MemoryBigtable) Put(tableName []byte, op *PutOp) error {
 	// Fill in missing verIds with current time in ms
 	op.fillVer(curTimeMillis())
 
-	for _, cell := range op.cells() {
-		colString := string(cell.ColId)
+	for colId, cell := range op.cols {
+		colString := string(colId)
 		col, ok := row.cols[colString]
 		if ok {
 			idx := findCell(col, cell.VerId.Int64())

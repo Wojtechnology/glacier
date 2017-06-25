@@ -9,8 +9,6 @@ import (
 )
 
 func assertCellsEqualNoVerId(t *testing.T, a, b *Cell) {
-	test.AssertBytesEqual(t, a.RowId, b.RowId)
-	test.AssertBytesEqual(t, a.ColId, b.ColId)
 	test.AssertBytesEqual(t, a.Data, b.Data)
 }
 
@@ -89,9 +87,9 @@ func TestMemoryCreateTableAlreadyExists(t *testing.T) {
 
 func TestFindCell(t *testing.T) {
 	cells := make([]*Cell, 3)
-	cells[0] = NewCellVer(nil, nil, 9, nil)
-	cells[1] = NewCellVer(nil, nil, 7, nil)
-	cells[2] = NewCellVer(nil, nil, 5, nil)
+	cells[0] = NewCellVer(9, nil)
+	cells[1] = NewCellVer(7, nil)
+	cells[2] = NewCellVer(5, nil)
 
 	oddCases := [][]int{
 		{10, 0}, {9, 0},
@@ -105,7 +103,7 @@ func TestFindCell(t *testing.T) {
 		test.AssertEqual(t, testCase[1], findCell(cells, int64(testCase[0])))
 	}
 
-	cells = append(cells, NewCellVer(nil, nil, 3, nil))
+	cells = append(cells, NewCellVer(3, nil))
 	evenCases := append(oddCases, []int{3, 3}, []int{2, 4})
 
 	// Test with an even list

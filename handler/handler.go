@@ -23,36 +23,47 @@ func SetupRoutes() {
 // Handlers
 // --------
 
-type cellAddress struct {
-	TableName string   `json:"table_name"`
-	RowId     string   `json:"row_id"`
-	ColId     string   `json:"col_id"`
-	VerId     *big.Int `json:"ver_id"`
-}
-
-func (ca *cellAddress) toCoreCellAddress() *core.CellAddress {
-	var verId *big.Int = nil
-	if ca.VerId != nil {
-		verId = big.NewInt(ca.VerId.Int64())
-	}
-	return &core.CellAddress{
-		TableName: []byte(ca.TableName),
-		RowId:     []byte(ca.RowId),
-		ColId:     []byte(ca.ColId),
-		VerId:     verId,
-	}
+type cell struct {
+	Data  string   `json:"data"`
+	VerId *big.Int `json:"ver_id"`
 }
 
 type transactionRequest struct {
-	CellAddress *cellAddress `json:"cell_address"`
-	Data        string       `json:"data"`
+	TableName string                      `json:"table_name"`
+	RowId     string                      `json:"row_id"`
+	Cols      map[string]*json.RawMessage `json:"cols"`
 }
 
-func (tr *transactionRequest) toCoreTransaction() *core.Transaction {
-	return &core.Transaction{
-		CellAddress: tr.CellAddress.toCoreCellAddress(),
-		Data:        []byte(tr.Data),
+func (c *cell) toCoreCell() *core.Cell {
+	var verId *big.Int = nil
+	if c.VerId != nil {
+		verId = big.NewInt(c.VerId.Int64())
 	}
+	return &core.Cell{
+		Data:  []byte(c.Data),
+		VerId: verId,
+	}
+}
+
+func (tr *transactionRequest) toCoreTransaction() (*core.Transaction, error) {
+	var cols map[string]*core.Cell = nil
+	if tr.Cols != nil {
+		cols = make(map[string]*core.Cell)
+		for colId, rawCell := range tr.Cols {
+			var c *cell
+			if err := json.Unmarshal(*rawCell, &c); err != nil {
+				return nil, err
+			}
+			cols[colId] = c.toCoreCell()
+
+		}
+	}
+
+	return &core.Transaction{
+		TableName: []byte(tr.TableName),
+		RowId:     []byte(tr.RowId),
+		Cols:      cols,
+	}, nil
 }
 
 func handleTransaction(w http.ResponseWriter, r *http.Request) {
@@ -71,8 +82,13 @@ func handleTransaction(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "bad request\n")
 			return
 		}
-
-		if err := blockchain.AddTransaction(tr.toCoreTransaction()); err != nil {
+		tx, err := tr.toCoreTransaction()
+		if err != nil {
+			w.WriteHeader(400)
+			fmt.Fprintf(w, "bad request\n")
+			return
+		}
+		if err := blockchain.AddTransaction(tx); err != nil {
 			w.WriteHeader(400)
 			fmt.Fprintf(w, "bad request\n")
 			return

@@ -21,13 +21,14 @@ func TestAddTransaction(t *testing.T) {
 
 	other := &Node{PubKey: []byte{69}}
 	tx := &Transaction{
-		CellAddress: &CellAddress{
-			TableName: []byte{123},
-			RowId:     []byte{124},
-			ColId:     []byte{125},
-			VerId:     big.NewInt(126),
+		TableName: []byte{123},
+		RowId:     []byte{124},
+		Cols: map[string]*Cell{
+			string([]byte{125}): &Cell{
+				VerId: big.NewInt(126),
+				Data:  []byte{127},
+			},
 		},
-		Data: []byte{127},
 	}
 
 	bc := NewBlockchain(db, nil, []*Node{other})
@@ -51,11 +52,11 @@ func TestGetMyTransactions(t *testing.T) {
 	other := &Node{PubKey: []byte{70}}
 	tx := &Transaction{
 		AssignedTo: me.PubKey,
-		Data:       []byte{1},
+		TableName:  []byte{1},
 	}
 	otherTx := &Transaction{
 		AssignedTo: other.PubKey,
-		Data:       []byte{2},
+		TableName:  []byte{2},
 	}
 	err = db.WriteTransaction(tx.toDBTransaction())
 	assert.Nil(t, err)
@@ -79,17 +80,17 @@ func TestGetStaleTransactions(t *testing.T) {
 	tx := &Transaction{
 		AssignedTo: me.PubKey,
 		AssignedAt: big.NewInt(common.Now() - 35000*1000),
-		Data:       []byte{1},
+		TableName:  []byte{1},
 	}
 	otherTx := &Transaction{
 		AssignedTo: other.PubKey,
 		AssignedAt: big.NewInt(common.Now() - 25000*1000),
-		Data:       []byte{2},
+		TableName:  []byte{2},
 	}
 	otherTx2 := &Transaction{
 		AssignedTo: other.PubKey,
 		AssignedAt: big.NewInt(common.Now() - 35000*1000),
-		Data:       []byte{3},
+		TableName:  []byte{3},
 	}
 	err = db.WriteTransaction(tx.toDBTransaction())
 	assert.Nil(t, err)
@@ -113,8 +114,8 @@ func TestDeleteTransactions(t *testing.T) {
 	assert.Nil(t, err)
 
 	me := &Node{PubKey: []byte{69}}
-	tx := &Transaction{AssignedTo: me.PubKey, Data: []byte{1}}
-	otherTx := &Transaction{AssignedTo: me.PubKey, Data: []byte{2}}
+	tx := &Transaction{AssignedTo: me.PubKey, TableName: []byte{1}}
+	otherTx := &Transaction{AssignedTo: me.PubKey, TableName: []byte{2}}
 	err = db.WriteTransaction(tx.toDBTransaction())
 	assert.Nil(t, err)
 	err = db.WriteTransaction(otherTx.toDBTransaction())
@@ -137,7 +138,7 @@ func TestBuildBlock(t *testing.T) {
 
 	me := &Node{PubKey: []byte{69}}
 	other := &Node{PubKey: []byte{70}}
-	tx := &Transaction{Data: []byte{1}}
+	tx := &Transaction{TableName: []byte{1}}
 	err = db.WriteTransaction(tx.toDBTransaction())
 	assert.Nil(t, err)
 
@@ -156,7 +157,7 @@ func TestWriteBlock(t *testing.T) {
 	db, err := meddb.NewMemoryBlockchainDB()
 	assert.Nil(t, err)
 
-	b := &Block{Transactions: []*Transaction{&Transaction{Data: []byte{123}}}}
+	b := &Block{Transactions: []*Transaction{&Transaction{TableName: []byte{123}}}}
 
 	bc := NewBlockchain(db, nil, nil)
 
@@ -173,7 +174,7 @@ func TestGetBlocks(t *testing.T) {
 	db, err := meddb.NewMemoryBlockchainDB()
 	assert.Nil(t, err)
 
-	b := &Block{Transactions: []*Transaction{&Transaction{Data: []byte{123}}}}
+	b := &Block{Transactions: []*Transaction{&Transaction{TableName: []byte{123}}}}
 	err = db.WriteBlock(b.toDBBlock())
 	assert.Nil(t, err)
 
@@ -189,9 +190,18 @@ func TestGetOldestBlocks(t *testing.T) {
 	db, err := meddb.NewMemoryBlockchainDB()
 	assert.Nil(t, err)
 
-	b := &Block{CreatedAt: big.NewInt(common.Now() - 3000*1000)}
-	otherB := &Block{CreatedAt: big.NewInt(common.Now() - 2000*1000)}
-	otherB2 := &Block{CreatedAt: big.NewInt(common.Now() - 1000*1000)}
+	b := &Block{
+		CreatedAt:    big.NewInt(common.Now() - 3000*1000),
+		Transactions: []*Transaction{&Transaction{TableName: []byte{123}}},
+	}
+	otherB := &Block{
+		CreatedAt:    big.NewInt(common.Now() - 2000*1000),
+		Transactions: []*Transaction{&Transaction{TableName: []byte{124}}},
+	}
+	otherB2 := &Block{
+		CreatedAt:    big.NewInt(common.Now() - 1000*1000),
+		Transactions: []*Transaction{&Transaction{TableName: []byte{125}}},
+	}
 	err = db.WriteBlock(b.toDBBlock())
 	assert.Nil(t, err)
 	err = db.WriteBlock(otherB.toDBBlock())

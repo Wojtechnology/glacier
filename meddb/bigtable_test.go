@@ -22,7 +22,7 @@ func testPutGet(t *testing.T, bt Bigtable, tableName []byte) {
 	res, err := bt.Get(tableName, getOp)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(res[string(colId)]))
-	assertCellsEqualNoVerId(t, NewCell(rowId, colId, data), res[string(colId)][0])
+	assertCellsEqualNoVerId(t, NewCell(data), res[string(colId)][0])
 	assert.NotNil(t, res[string(colId)][0].VerId)
 }
 
@@ -49,10 +49,10 @@ func testPutGetVer(t *testing.T, bt Bigtable, tableName []byte) {
 	res, err := bt.Get(tableName, getOp)
 	assert.Nil(t, err)
 	assert.Equal(t, 4, len(res[string(colId)]))
-	assertCellsEqual(t, NewCellVer(rowId, colId, 7, data), res[string(colId)][0])
-	assertCellsEqual(t, NewCellVer(rowId, colId, 5, data), res[string(colId)][1])
-	assertCellsEqual(t, NewCellVer(rowId, colId, 3, data), res[string(colId)][2])
-	assertCellsEqual(t, NewCellVer(rowId, colId, 1, data), res[string(colId)][3])
+	assertCellsEqual(t, NewCellVer(7, data), res[string(colId)][0])
+	assertCellsEqual(t, NewCellVer(5, data), res[string(colId)][1])
+	assertCellsEqual(t, NewCellVer(3, data), res[string(colId)][2])
+	assertCellsEqual(t, NewCellVer(1, data), res[string(colId)][3])
 }
 
 func testPutOverwrite(t *testing.T, bt Bigtable, tableName []byte) {
@@ -68,7 +68,7 @@ func testPutOverwrite(t *testing.T, bt Bigtable, tableName []byte) {
 	res, err := bt.Get(tableName, getOp)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(res[string(colId)]))
-	assertCellsEqual(t, NewCellVer(rowId, colId, verId, data), res[string(colId)][0])
+	assertCellsEqual(t, NewCellVer(verId, data), res[string(colId)][0])
 	assert.NotNil(t, res[string(colId)][0].VerId)
 
 	data = []byte("YOO I CHANGED")
@@ -78,7 +78,7 @@ func testPutOverwrite(t *testing.T, bt Bigtable, tableName []byte) {
 	res, err = bt.Get(tableName, getOp)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(res[string(colId)]))
-	assertCellsEqual(t, NewCellVer(rowId, colId, verId, data), res[string(colId)][0])
+	assertCellsEqual(t, NewCellVer(verId, data), res[string(colId)][0])
 	assert.NotNil(t, res[string(colId)][0].VerId)
 }
 
@@ -94,7 +94,7 @@ func testGetExact(t *testing.T, bt Bigtable, tableName []byte) {
 	res, err := bt.Get(tableName, getOp)
 	assert.Nil(t, err)
 	assert.Equal(t, 1, len(res[string(colId)]))
-	assertCellsEqual(t, NewCellVer(rowId, colId, 3, data), res[string(colId)][0])
+	assertCellsEqual(t, NewCellVer(3, data), res[string(colId)][0])
 
 	getOp = NewGetOpVer(rowId, [][]byte{colId}, 4)
 
@@ -115,8 +115,8 @@ func testGetLimit(t *testing.T, bt Bigtable, tableName []byte) {
 	res, err := bt.Get(tableName, getOp)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res[string(colId)]))
-	assertCellsEqual(t, NewCellVer(rowId, colId, 7, data), res[string(colId)][0])
-	assertCellsEqual(t, NewCellVer(rowId, colId, 5, data), res[string(colId)][1])
+	assertCellsEqual(t, NewCellVer(7, data), res[string(colId)][0])
+	assertCellsEqual(t, NewCellVer(5, data), res[string(colId)][1])
 }
 
 func testGetRange(t *testing.T, bt Bigtable, tableName []byte) {
@@ -131,26 +131,26 @@ func testGetRange(t *testing.T, bt Bigtable, tableName []byte) {
 	res, err := bt.Get(tableName, getOp)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res[string(colId)]))
-	assertCellsEqual(t, NewCellVer(rowId, colId, 5, data), res[string(colId)][0])
-	assertCellsEqual(t, NewCellVer(rowId, colId, 3, data), res[string(colId)][1])
+	assertCellsEqual(t, NewCellVer(5, data), res[string(colId)][0])
+	assertCellsEqual(t, NewCellVer(3, data), res[string(colId)][1])
 
 	getOp = NewGetOpRange(rowId, [][]byte{colId}, 2, 6)
 
 	res, err = bt.Get(tableName, getOp)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(res[string(colId)]))
-	assertCellsEqual(t, NewCellVer(rowId, colId, 5, data), res[string(colId)][0])
-	assertCellsEqual(t, NewCellVer(rowId, colId, 3, data), res[string(colId)][1])
+	assertCellsEqual(t, NewCellVer(5, data), res[string(colId)][0])
+	assertCellsEqual(t, NewCellVer(3, data), res[string(colId)][1])
 
 	getOp = NewGetOpRange(rowId, [][]byte{colId}, -1, 10)
 
 	res, err = bt.Get(tableName, getOp)
 	assert.Nil(t, err)
 	assert.Equal(t, 4, len(res[string(colId)]))
-	assertCellsEqual(t, NewCellVer(rowId, colId, 7, data), res[string(colId)][0])
-	assertCellsEqual(t, NewCellVer(rowId, colId, 5, data), res[string(colId)][1])
-	assertCellsEqual(t, NewCellVer(rowId, colId, 3, data), res[string(colId)][2])
-	assertCellsEqual(t, NewCellVer(rowId, colId, 1, data), res[string(colId)][3])
+	assertCellsEqual(t, NewCellVer(7, data), res[string(colId)][0])
+	assertCellsEqual(t, NewCellVer(5, data), res[string(colId)][1])
+	assertCellsEqual(t, NewCellVer(3, data), res[string(colId)][2])
+	assertCellsEqual(t, NewCellVer(1, data), res[string(colId)][3])
 }
 
 func testPutTableNotFound(t *testing.T, bt Bigtable) {
