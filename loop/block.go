@@ -17,11 +17,11 @@ const (
 // TODO: Make better abstraction for loops (sort of like pipeline in BigChainDB)
 // Do this when we use rethink changefeeds to trigger a loop
 type blockLoopState struct {
-	lastBlockNS int64
+	lastBlockMS int64
 }
 
 func AddBlockLoop(bc *core.Blockchain, errChannel chan<- error) {
-	s := &blockLoopState{lastBlockNS: common.Now()}
+	s := &blockLoopState{lastBlockMS: common.Now()}
 	for true {
 		err := addBlock(bc, s)
 		if err != nil {
@@ -39,14 +39,14 @@ func addBlock(bc *core.Blockchain, s *blockLoopState) error {
 		return err
 	}
 
-	nowNS := common.Now()
-	timePassed := time.Unix(0, nowNS-s.lastBlockNS)
+	nowMS := common.Now()
+	timePassed := time.Unix(0, nowMS-s.lastBlockMS)
 	if len(txs) == 0 || (len(txs) < blockMinTransactions &&
-		timePassed.Before(time.Unix(0, blockLongestWaitMS*int64(time.Millisecond)))) {
+		timePassed.Before(time.Unix(0, blockLongestWaitMS))) {
 
 		return nil
 	}
-	s.lastBlockNS = nowNS
+	s.lastBlockMS = nowMS
 
 	// TODO: Validate transactions
 	b, err := bc.BuildBlock(txs)

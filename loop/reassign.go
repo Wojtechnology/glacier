@@ -8,7 +8,7 @@ import (
 
 const (
 	reassignLoopWaitMS = 30000
-	reassignStaleAgeNS = 30000 * 1000
+	reassignStaleAgeMS = 30000
 )
 
 func ReassignTransactionsLoop(bc *core.Blockchain, errChannel chan<- error) {
@@ -24,7 +24,7 @@ func ReassignTransactionsLoop(bc *core.Blockchain, errChannel chan<- error) {
 }
 
 func reassignTransactions(bc *core.Blockchain) error {
-	staleTxs, err := bc.GetStaleTransactions(reassignStaleAgeNS)
+	staleTxs, err := bc.GetStaleTransactions(reassignStaleAgeMS)
 	if err != nil {
 		return err
 	}

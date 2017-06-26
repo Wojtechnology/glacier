@@ -11,7 +11,7 @@ import (
 )
 
 func assertRecent(t *testing.T, x int64) {
-	assert.True(t, x >= common.Now()-1000*1000)
+	assert.True(t, x >= common.Now()-1000)
 	assert.True(t, x <= common.Now())
 }
 
@@ -79,17 +79,17 @@ func TestGetStaleTransactions(t *testing.T) {
 	other := &Node{PubKey: []byte{70}}
 	tx := &Transaction{
 		AssignedTo: me.PubKey,
-		AssignedAt: big.NewInt(common.Now() - 35000*1000),
+		AssignedAt: big.NewInt(common.Now() - 35000),
 		TableName:  []byte{1},
 	}
 	otherTx := &Transaction{
 		AssignedTo: other.PubKey,
-		AssignedAt: big.NewInt(common.Now() - 25000*1000),
+		AssignedAt: big.NewInt(common.Now() - 25000),
 		TableName:  []byte{2},
 	}
 	otherTx2 := &Transaction{
 		AssignedTo: other.PubKey,
-		AssignedAt: big.NewInt(common.Now() - 35000*1000),
+		AssignedAt: big.NewInt(common.Now() - 35000),
 		TableName:  []byte{3},
 	}
 	err = db.WriteTransaction(tx.toDBTransaction())
@@ -101,7 +101,7 @@ func TestGetStaleTransactions(t *testing.T) {
 
 	bc := NewBlockchain(db, me, []*Node{other})
 
-	txs, err := bc.GetStaleTransactions(30000 * 1000)
+	txs, err := bc.GetStaleTransactions(30000)
 	assert.Nil(t, err)
 	expected := []*Transaction{tx, otherTx2}
 	assert.Equal(t, 2, len(txs))
@@ -191,15 +191,15 @@ func TestGetOldestBlocks(t *testing.T) {
 	assert.Nil(t, err)
 
 	b := &Block{
-		CreatedAt:    big.NewInt(common.Now() - 3000*1000),
+		CreatedAt:    big.NewInt(common.Now() - 3000),
 		Transactions: []*Transaction{&Transaction{TableName: []byte{123}}},
 	}
 	otherB := &Block{
-		CreatedAt:    big.NewInt(common.Now() - 2000*1000),
+		CreatedAt:    big.NewInt(common.Now() - 2000),
 		Transactions: []*Transaction{&Transaction{TableName: []byte{124}}},
 	}
 	otherB2 := &Block{
-		CreatedAt:    big.NewInt(common.Now() - 1000*1000),
+		CreatedAt:    big.NewInt(common.Now() - 1000),
 		Transactions: []*Transaction{&Transaction{TableName: []byte{125}}},
 	}
 	err = db.WriteBlock(b.toDBBlock())
@@ -211,7 +211,7 @@ func TestGetOldestBlocks(t *testing.T) {
 
 	bc := NewBlockchain(db, nil, nil)
 
-	bs, err := bc.GetOldestBlocks(common.Now()-2500*1000, 2)
+	bs, err := bc.GetOldestBlocks(common.Now()-2500, 2)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(bs))
 	assert.Equal(t, otherB, bs[0])
