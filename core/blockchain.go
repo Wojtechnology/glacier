@@ -10,14 +10,18 @@ import (
 
 type Blockchain struct {
 	db         meddb.BlockchainDB // Stores db data structures
+	bt         meddb.Bigtable     // Bigtable that stores cells
 	me         *Node              // This node
 	federation []*Node            // All other nodes in the network
-	// TODO: Lock
+	// TODO: Federation lock
 }
 
-func NewBlockchain(db meddb.BlockchainDB, me *Node, federation []*Node) *Blockchain {
+func NewBlockchain(db meddb.BlockchainDB, bt meddb.Bigtable,
+	me *Node, federation []*Node) *Blockchain {
+
 	return &Blockchain{
 		db:         db,
+		bt:         bt,
 		me:         me,
 		federation: federation,
 	}

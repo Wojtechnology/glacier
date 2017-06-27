@@ -31,7 +31,7 @@ func TestAddTransaction(t *testing.T) {
 		},
 	}
 
-	bc := NewBlockchain(db, nil, []*Node{other})
+	bc := NewBlockchain(db, nil, nil, []*Node{other})
 
 	err = bc.AddTransaction(tx)
 	assert.Nil(t, err)
@@ -63,7 +63,7 @@ func TestGetMyTransactions(t *testing.T) {
 	err = db.WriteTransaction(otherTx.toDBTransaction())
 	assert.Nil(t, err)
 
-	bc := NewBlockchain(db, me, []*Node{other})
+	bc := NewBlockchain(db, nil, me, []*Node{other})
 
 	txs, err := bc.GetMyTransactions()
 	assert.Nil(t, err)
@@ -99,7 +99,7 @@ func TestGetStaleTransactions(t *testing.T) {
 	err = db.WriteTransaction(otherTx2.toDBTransaction())
 	assert.Nil(t, err)
 
-	bc := NewBlockchain(db, me, []*Node{other})
+	bc := NewBlockchain(db, nil, me, []*Node{other})
 
 	txs, err := bc.GetStaleTransactions(30000)
 	assert.Nil(t, err)
@@ -121,7 +121,7 @@ func TestDeleteTransactions(t *testing.T) {
 	err = db.WriteTransaction(otherTx.toDBTransaction())
 	assert.Nil(t, err)
 
-	bc := NewBlockchain(db, me, nil)
+	bc := NewBlockchain(db, nil, me, nil)
 
 	err = bc.DeleteTransactions([]*Transaction{otherTx})
 	assert.Nil(t, err)
@@ -142,7 +142,7 @@ func TestBuildBlock(t *testing.T) {
 	err = db.WriteTransaction(tx.toDBTransaction())
 	assert.Nil(t, err)
 
-	bc := NewBlockchain(db, me, []*Node{other})
+	bc := NewBlockchain(db, nil, me, []*Node{other})
 
 	txs := []*Transaction{tx}
 	b, err := bc.BuildBlock(txs)
@@ -159,7 +159,7 @@ func TestWriteBlock(t *testing.T) {
 
 	b := &Block{Transactions: []*Transaction{&Transaction{TableName: []byte{123}}}}
 
-	bc := NewBlockchain(db, nil, nil)
+	bc := NewBlockchain(db, nil, nil, nil)
 
 	err = bc.WriteBlock(b)
 	assert.Nil(t, err)
@@ -178,7 +178,7 @@ func TestGetBlocks(t *testing.T) {
 	err = db.WriteBlock(b.toDBBlock())
 	assert.Nil(t, err)
 
-	bc := NewBlockchain(db, nil, nil)
+	bc := NewBlockchain(db, nil, nil, nil)
 
 	bs, err := bc.GetBlocks([]Hash{b.Hash()})
 	assert.Nil(t, err)
@@ -209,7 +209,7 @@ func TestGetOldestBlocks(t *testing.T) {
 	err = db.WriteBlock(otherB2.toDBBlock())
 	assert.Nil(t, err)
 
-	bc := NewBlockchain(db, nil, nil)
+	bc := NewBlockchain(db, nil, nil, nil)
 
 	bs, err := bc.GetOldestBlocks(common.Now()-2500, 2)
 	assert.Nil(t, err)
@@ -229,7 +229,7 @@ func TestBuildVote(t *testing.T) {
 		value       = true
 	)
 
-	bc := NewBlockchain(db, me, nil)
+	bc := NewBlockchain(db, nil, me, nil)
 
 	v, err := bc.BuildVote(blockId, prevBlockId, value)
 	assert.Nil(t, err)
@@ -257,7 +257,7 @@ func TestWriteVote(t *testing.T) {
 	err = db.WriteVote(v.toDBVote())
 	assert.Nil(t, err)
 
-	bc := NewBlockchain(db, me, nil)
+	bc := NewBlockchain(db, nil, me, nil)
 
 	err = bc.WriteVote(v)
 	assert.Nil(t, err)
@@ -308,7 +308,7 @@ func TestGetRecentVotesMultiple(t *testing.T) {
 	err = db.WriteVote(v4.toDBVote())
 	assert.Nil(t, err)
 
-	bc := NewBlockchain(db, me, nil)
+	bc := NewBlockchain(db, nil, me, nil)
 
 	vs, err := bc.GetRecentVotes()
 	assert.Nil(t, err)
@@ -342,7 +342,7 @@ func TestGetRecentVotesSingle(t *testing.T) {
 	err = db.WriteVote(v2.toDBVote())
 	assert.Nil(t, err)
 
-	bc := NewBlockchain(db, me, nil)
+	bc := NewBlockchain(db, nil, me, nil)
 
 	vs, err := bc.GetRecentVotes()
 	assert.Nil(t, err)
@@ -356,7 +356,7 @@ func TestGetRecentVotesEmpty(t *testing.T) {
 
 	me := &Node{PubKey: []byte{69}}
 
-	bc := NewBlockchain(db, me, nil)
+	bc := NewBlockchain(db, nil, me, nil)
 
 	vs, err := bc.GetRecentVotes()
 	assert.Nil(t, err)

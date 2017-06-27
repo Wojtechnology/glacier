@@ -7,12 +7,24 @@ import (
 )
 
 func initBlockchain() (*core.Blockchain, error) {
-	db, err := meddb.NewRethinkBlockchainDB([]string{"localhost"}, "prod")
+	addresses := []string{"localhost"}
+	database := "prod"
+
+	// Init db that contains meddb
+	db, err := meddb.NewRethinkBlockchainDB(addresses, database)
 	if err != nil {
 		return nil, err
 	}
+
+	// Init bigtable that contains cells
+	bt, err := meddb.NewRethinkBigtable(addresses, database)
+	if err != nil {
+		return nil, err
+	}
+
 	bc := core.NewBlockchain(
 		db,
+		bt,
 		&core.Node{PubKey: []byte{69}},
 		[]*core.Node{&core.Node{[]byte{69}}},
 	)
