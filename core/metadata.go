@@ -83,7 +83,7 @@ func (tm *TableMetadata) Write(bt meddb.Bigtable, flag TableMetadataFlag) error 
 	return nil
 }
 
-// Writes non-null fields (specified by flag) of TableMetadata from bigtable
+// Reads non-null fields (specified by flag) of TableMetadata from bigtable
 // Flag == 0 means to read all fields
 func (tm *TableMetadata) Read(bt meddb.Bigtable, flag TableMetadataFlag) error {
 	colIds := make([][]byte, 0)

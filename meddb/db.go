@@ -39,6 +39,20 @@ type Transaction struct {
 	TableName  []byte
 	RowId      []byte
 	Cols       map[string]*Cell
+	Outputs    []*Output
+	Inputs     []*Input
+}
+
+type Output struct {
+	Hash []byte
+	Type int
+	Data []byte
+}
+
+type Input struct {
+	Type       int
+	OutputHash []byte
+	Data       []byte
 }
 
 type Block struct {

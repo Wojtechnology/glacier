@@ -18,6 +18,8 @@ type Transaction struct {
 	TableName  []byte
 	RowId      []byte
 	Cols       map[string]*Cell
+	Outputs    []Output
+	Inputs     []Input
 }
 
 // ---------------
@@ -31,13 +33,20 @@ type colCell struct {
 
 // Part of transaction used in hash
 type transactionBody struct {
-	TableName []byte
-	RowId     []byte
-	Cols      []*colCell
+	TableName    []byte
+	RowId        []byte
+	Cols         []*colCell
+	OutputHashes [][]byte
+	InputHashes  [][]byte
 }
 
 func (tx *Transaction) Hash() Hash {
-	var cols []*colCell = nil
+	var (
+		cols         []*colCell = nil
+		outputHashes [][]byte   = nil
+		inputHashes  [][]byte   = nil
+	)
+
 	if tx.Cols != nil {
 		cols = make([]*colCell, len(tx.Cols))
 		i := 0
@@ -45,11 +54,34 @@ func (tx *Transaction) Hash() Hash {
 			cols[i] = &colCell{ColId: []byte(colId), Cell: cell}
 			i++
 		}
+
+		// Sorting makes the hash deterministic
+		sort.Slice(cols, func(i, j int) bool {
+			return string(cols[i].ColId) < string(cols[j].ColId)
+		})
 	}
-	sort.Slice(cols, func(i, j int) bool {
-		return string(cols[i].ColId) < string(cols[j].ColId)
+
+	if tx.Outputs != nil {
+		outputHashes = make([][]byte, len(tx.Outputs))
+		for i, output := range tx.Outputs {
+			outputHashes[i] = hashOutput(output).Bytes()
+		}
+	}
+
+	if tx.Inputs != nil {
+		outputHashes = make([][]byte, len(tx.Inputs))
+		for i, input := range tx.Inputs {
+			inputHashes[i] = hashInput(input).Bytes()
+		}
+	}
+
+	return rlpHash(&transactionBody{
+		TableName:    tx.TableName,
+		RowId:        tx.RowId,
+		Cols:         cols,
+		OutputHashes: outputHashes,
+		InputHashes:  inputHashes,
 	})
-	return rlpHash(&transactionBody{TableName: tx.TableName, RowId: tx.RowId, Cols: cols})
 }
 
 func (tx *Transaction) Validate() bool {
@@ -57,15 +89,35 @@ func (tx *Transaction) Validate() bool {
 }
 
 func (tx *Transaction) toDBTransaction() *meddb.Transaction {
-	var lastAssigned *big.Int = nil
+	var (
+		lastAssigned *big.Int               = nil
+		cols         map[string]*meddb.Cell = nil
+		outputs      []*meddb.Output        = nil
+		inputs       []*meddb.Input         = nil
+	)
+
 	if tx.AssignedAt != nil {
 		lastAssigned = big.NewInt(tx.AssignedAt.Int64())
 	}
-	var cols map[string]*meddb.Cell = nil
+
 	if tx.Cols != nil {
 		cols = make(map[string]*meddb.Cell)
 		for colId, cell := range tx.Cols {
 			cols[colId] = toDBCell(cell)
+		}
+	}
+
+	if tx.Outputs != nil {
+		outputs = make([]*meddb.Output, len(tx.Outputs))
+		for i, output := range tx.Outputs {
+			outputs[i] = toDBOutput(output)
+		}
+	}
+
+	if tx.Inputs != nil {
+		inputs = make([]*meddb.Input, len(tx.Inputs))
+		for i, input := range tx.Inputs {
+			inputs[i] = toDBInput(input)
 		}
 	}
 
@@ -77,19 +129,43 @@ func (tx *Transaction) toDBTransaction() *meddb.Transaction {
 		TableName:  tx.TableName,
 		RowId:      tx.RowId,
 		Cols:       cols,
+		Outputs:    outputs,
+		Inputs:     inputs,
 	}
 }
 
 func fromDBTransaction(tx *meddb.Transaction) *Transaction {
-	var lastAssigned *big.Int = nil
+	var (
+		lastAssigned *big.Int         = nil
+		cols         map[string]*Cell = nil
+		outputs      []Output         = nil
+		inputs       []Input          = nil
+	)
+
 	if tx.AssignedAt != nil {
 		lastAssigned = big.NewInt(tx.AssignedAt.Int64())
 	}
-	var cols map[string]*Cell = nil
+
 	if tx.Cols != nil {
 		cols = make(map[string]*Cell)
 		for colId, cell := range tx.Cols {
 			cols[colId] = fromDBCell(cell)
+		}
+	}
+
+	if tx.Outputs != nil {
+		outputs = make([]Output, len(tx.Outputs))
+		for i, output := range tx.Outputs {
+			// TODO: Log when error occurs, since this should not be able to error
+			outputs[i], _ = fromDBOutput(output)
+		}
+	}
+
+	if tx.Inputs != nil {
+		inputs = make([]Input, len(tx.Inputs))
+		for i, input := range tx.Inputs {
+			// TODO: Log when error occurs, since this should not be able to error
+			inputs[i], _ = fromDBInput(input)
 		}
 	}
 
@@ -100,6 +176,8 @@ func fromDBTransaction(tx *meddb.Transaction) *Transaction {
 		TableName:  tx.TableName,
 		RowId:      tx.RowId,
 		Cols:       cols,
+		Outputs:    outputs,
+		Inputs:     inputs,
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 // Returns hash of rlp encoded object
 func rlpHash(o interface{}) (hash Hash) {
 	w := sha3.New256()
+	// TODO: Log any errors here but don't throw
 	rlp.Encode(w, o)
 	w.Sum(hash[:0])
 	return hash
