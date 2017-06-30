@@ -12,7 +12,7 @@ type OutputType int
 
 // Defines OutputType "enum"
 const (
-	OUTPUT_TYPE_TABLE_EXISTS OutputType = iota // TABLE_EXISTS = 1 - unique table names
+	OUTPUT_TYPE_TABLE_EXISTS OutputType = iota // TABLE_EXISTS = 0 - unique table names
 )
 
 type Output interface {

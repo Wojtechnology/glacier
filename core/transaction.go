@@ -69,7 +69,7 @@ func (tx *Transaction) Hash() Hash {
 	}
 
 	if tx.Inputs != nil {
-		outputHashes = make([][]byte, len(tx.Inputs))
+		inputHashes = make([][]byte, len(tx.Inputs))
 		for i, input := range tx.Inputs {
 			inputHashes[i] = hashInput(input).Bytes()
 		}

@@ -10,6 +10,10 @@ import (
 
 type InputType int
 
+const (
+	INPUT_TYPE_ADMIN InputType = iota // ADMIN = 1 - user can modify table
+)
+
 type Input interface {
 	OutputHash() Hash
 	Type() InputType
@@ -23,6 +27,19 @@ type InputLink struct {
 
 func (link *InputLink) OutputHash() Hash {
 	return link.LinksTo
+}
+
+type AdminInput struct {
+	InputLink
+	PubKey []byte
+}
+
+func (in *AdminInput) Type() InputType {
+	return INPUT_TYPE_ADMIN
+}
+
+func (in *AdminInput) Data() []byte {
+	return in.PubKey
 }
 
 // -------
@@ -52,5 +69,10 @@ func toDBInput(in Input) *meddb.Input {
 }
 
 func fromDBInput(in *meddb.Input) (Input, error) {
-	return nil, errors.New(fmt.Sprint("Invalid input type: %d\n", in.Type))
+	switch InputType(in.Type) {
+	case INPUT_TYPE_ADMIN:
+		return &AdminInput{InputLink{BytesToHash(in.OutputHash)}, in.Data}, nil
+	default:
+		return nil, errors.New(fmt.Sprint("Invalid input type: %d\n", in.Type))
+	}
 }

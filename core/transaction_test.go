@@ -25,6 +25,8 @@ func TestTransactionHash(t *testing.T) {
 				Data:  []byte{127},
 			},
 		},
+		Outputs: []Output{&TableExistsOutput{[]byte{0}}, &TableExistsOutput{[]byte{1}}},
+		Inputs:  []Input{&AdminInput{InputLink{}, []byte{2}}, &AdminInput{InputLink{}, []byte{3}}},
 	}
 
 	expected := rlpHash(&transactionBody{
@@ -46,6 +48,14 @@ func TestTransactionHash(t *testing.T) {
 				},
 			},
 		},
+		OutputHashes: [][]byte{
+			hashOutput(tx.Outputs[0]).Bytes(),
+			hashOutput(tx.Outputs[1]).Bytes(),
+		},
+		InputHashes: [][]byte{
+			hashInput(tx.Inputs[0]).Bytes(),
+			hashInput(tx.Inputs[1]).Bytes(),
+		},
 	})
 	assert.Equal(t, expected, tx.Hash())
 }
@@ -62,6 +72,8 @@ func TestDBTransactionMapper(t *testing.T) {
 				Data:  []byte{127},
 			},
 		},
+		Outputs: []Output{&TableExistsOutput{[]byte{0}}, &TableExistsOutput{[]byte{1}}},
+		Inputs:  []Input{&AdminInput{InputLink{}, []byte{2}}, &AdminInput{InputLink{}, []byte{3}}},
 	}
 	hash := rlpHash(&transactionBody{
 		TableName: tx.TableName,
@@ -74,6 +86,14 @@ func TestDBTransactionMapper(t *testing.T) {
 					Data:  []byte{127},
 				},
 			},
+		},
+		OutputHashes: [][]byte{
+			hashOutput(tx.Outputs[0]).Bytes(),
+			hashOutput(tx.Outputs[1]).Bytes(),
+		},
+		InputHashes: [][]byte{
+			hashInput(tx.Inputs[0]).Bytes(),
+			hashInput(tx.Inputs[1]).Bytes(),
 		},
 	})
 
@@ -89,6 +109,30 @@ func TestDBTransactionMapper(t *testing.T) {
 		},
 		AssignedTo: []byte{12},
 		AssignedAt: big.NewInt(420),
+		Outputs: []*meddb.Output{
+			&meddb.Output{
+				Hash: hashOutput(tx.Outputs[0]).Bytes(),
+				Type: int(tx.Outputs[0].Type()),
+				Data: tx.Outputs[0].Data(),
+			},
+			&meddb.Output{
+				Hash: hashOutput(tx.Outputs[1]).Bytes(),
+				Type: int(tx.Outputs[1].Type()),
+				Data: tx.Outputs[1].Data(),
+			},
+		},
+		Inputs: []*meddb.Input{
+			&meddb.Input{
+				OutputHash: tx.Inputs[0].OutputHash().Bytes(),
+				Type:       int(tx.Inputs[0].Type()),
+				Data:       tx.Inputs[0].Data(),
+			},
+			&meddb.Input{
+				OutputHash: tx.Inputs[1].OutputHash().Bytes(),
+				Type:       int(tx.Inputs[1].Type()),
+				Data:       tx.Inputs[1].Data(),
+			},
+		},
 	}
 	actual := tx.toDBTransaction()
 	assert.Equal(t, expected, actual)

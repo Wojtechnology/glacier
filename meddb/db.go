@@ -73,16 +73,35 @@ type Vote struct {
 }
 
 func (tx *Transaction) Clone() *Transaction {
-	var lastAssigned *big.Int = nil
+	var (
+		lastAssigned *big.Int         = nil
+		cols         map[string]*Cell = nil
+		outputs      []*Output        = nil
+		inputs       []*Input         = nil
+	)
+
 	if tx.AssignedAt != nil {
 		lastAssigned = big.NewInt(tx.AssignedAt.Int64())
 	}
 
-	var cols map[string]*Cell = nil
 	if tx.Cols != nil {
 		cols = make(map[string]*Cell)
 		for colId, cell := range tx.Cols {
 			cols[colId] = cell.Clone()
+		}
+	}
+
+	if tx.Outputs != nil {
+		outputs = make([]*Output, len(tx.Outputs))
+		for i, output := range tx.Outputs {
+			outputs[i] = output.Clone()
+		}
+	}
+
+	if tx.Inputs != nil {
+		inputs = make([]*Input, len(tx.Inputs))
+		for i, input := range tx.Inputs {
+			inputs[i] = input.Clone()
 		}
 	}
 
@@ -93,6 +112,24 @@ func (tx *Transaction) Clone() *Transaction {
 		TableName:  tx.TableName,
 		RowId:      tx.RowId,
 		Cols:       cols,
+		Outputs:    outputs,
+		Inputs:     inputs,
+	}
+}
+
+func (o *Output) Clone() *Output {
+	return &Output{
+		Hash: o.Hash,
+		Type: o.Type,
+		Data: o.Data,
+	}
+}
+
+func (in *Input) Clone() *Input {
+	return &Input{
+		Type:       in.Type,
+		OutputHash: in.OutputHash,
+		Data:       in.Data,
 	}
 }
 

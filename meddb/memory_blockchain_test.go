@@ -254,6 +254,14 @@ func getTestTransaction() *Transaction {
 				VerId: big.NewInt(234),
 			},
 		},
+		Outputs: []*Output{
+			&Output{Hash: []byte("output1"), Type: 1, Data: []byte("data1")},
+			&Output{Hash: []byte("output2"), Type: 2, Data: []byte("data2")},
+		},
+		Inputs: []*Input{
+			&Input{OutputHash: []byte("output1"), Type: 1, Data: []byte("data1")},
+			&Input{OutputHash: []byte("output2"), Type: 2, Data: []byte("data2")},
+		},
 	}
 }
 

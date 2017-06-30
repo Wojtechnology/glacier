@@ -35,6 +35,20 @@ type rethinkTransaction struct {
 	TableName  []byte                         `gorethink:"table_name"`
 	RowId      []byte                         `gorethink:"row_id"`
 	Cols       map[string]*rethinkPartialCell `gorethink:"cols"`
+	Outputs    []*rethinkOutput               `gorethink:"outputs"`
+	Inputs     []*rethinkInput                `gorethink:"inputs"`
+}
+
+type rethinkOutput struct {
+	Hash []byte `gorethink:"id"`
+	Type int    `gorethink:"type"`
+	Data []byte `gorethink:"data"`
+}
+
+type rethinkInput struct {
+	Type       int    `gorethink:"type"`
+	OutputHash []byte `gorethink:"output_hash"`
+	Data       []byte `gorethink:"data"`
 }
 
 type rethinkBlock struct {
@@ -367,15 +381,35 @@ func fromRethinkPartialCell(cell *rethinkPartialCell) *Cell {
 }
 
 func newRethinkTransaction(tx *Transaction) *rethinkTransaction {
-	var assignedAt []byte = nil
+	var (
+		assignedAt []byte                         = nil
+		cols       map[string]*rethinkPartialCell = nil
+		outputs    []*rethinkOutput               = nil
+		inputs     []*rethinkInput                = nil
+	)
+
 	if tx.AssignedAt != nil {
 		assignedAt = int64ToBytes(tx.AssignedAt.Int64())
 	}
-	var cols map[string]*rethinkPartialCell = nil
+
 	if tx.Cols != nil {
 		cols = make(map[string]*rethinkPartialCell)
 		for colId, cell := range tx.Cols {
 			cols[colId] = newRethinkPartialCell(cell)
+		}
+	}
+
+	if tx.Outputs != nil {
+		outputs = make([]*rethinkOutput, len(tx.Outputs))
+		for i, output := range tx.Outputs {
+			outputs[i] = newRethinkOutput(output)
+		}
+	}
+
+	if tx.Inputs != nil {
+		inputs = make([]*rethinkInput, len(tx.Inputs))
+		for i, input := range tx.Inputs {
+			inputs[i] = newRethinkInput(input)
 		}
 	}
 
@@ -386,19 +420,41 @@ func newRethinkTransaction(tx *Transaction) *rethinkTransaction {
 		TableName:  tx.TableName,
 		RowId:      tx.RowId,
 		Cols:       cols,
+		Outputs:    outputs,
+		Inputs:     inputs,
 	}
 }
 
 func fromRethinkTransaction(tx *rethinkTransaction) *Transaction {
-	var assignedAt *big.Int = nil
+	var (
+		assignedAt *big.Int         = nil
+		cols       map[string]*Cell = nil
+		outputs    []*Output        = nil
+		inputs     []*Input         = nil
+	)
+
 	if tx.AssignedAt != nil && len(tx.AssignedAt) == 8 {
 		assignedAt = big.NewInt(bytesToInt64(tx.AssignedAt))
 	}
-	var cols map[string]*Cell = nil
+
 	if tx.Cols != nil {
 		cols = make(map[string]*Cell)
 		for colId, cell := range tx.Cols {
 			cols[colId] = fromRethinkPartialCell(cell)
+		}
+	}
+
+	if tx.Outputs != nil {
+		outputs = make([]*Output, len(tx.Outputs))
+		for i, output := range tx.Outputs {
+			outputs[i] = fromRethinkOutput(output)
+		}
+	}
+
+	if tx.Inputs != nil {
+		inputs = make([]*Input, len(tx.Inputs))
+		for i, input := range tx.Inputs {
+			inputs[i] = fromRethinkInput(input)
 		}
 	}
 
@@ -409,6 +465,8 @@ func fromRethinkTransaction(tx *rethinkTransaction) *Transaction {
 		TableName:  tx.TableName,
 		RowId:      tx.RowId,
 		Cols:       cols,
+		Outputs:    outputs,
+		Inputs:     inputs,
 	}
 
 }
@@ -419,6 +477,38 @@ func fromRethinkTransactions(rethinkTxs []*rethinkTransaction) []*Transaction {
 		txs[i] = fromRethinkTransaction(row)
 	}
 	return txs
+}
+
+func newRethinkOutput(o *Output) *rethinkOutput {
+	return &rethinkOutput{
+		Hash: o.Hash,
+		Type: o.Type,
+		Data: o.Data,
+	}
+}
+
+func newRethinkInput(in *Input) *rethinkInput {
+	return &rethinkInput{
+		Type:       in.Type,
+		OutputHash: in.OutputHash,
+		Data:       in.Data,
+	}
+}
+
+func fromRethinkOutput(o *rethinkOutput) *Output {
+	return &Output{
+		Hash: o.Hash,
+		Type: o.Type,
+		Data: o.Data,
+	}
+}
+
+func fromRethinkInput(in *rethinkInput) *Input {
+	return &Input{
+		Type:       in.Type,
+		OutputHash: in.OutputHash,
+		Data:       in.Data,
+	}
 }
 
 func newRethinkBlock(b *Block) *rethinkBlock {
