@@ -200,6 +200,7 @@ func TestRethinkGetOldestBlocksEmpty(t *testing.T) {
 
 func TestRethinkGetOutputs(t *testing.T) {
 	db := getRethinkDB(t)
+	defer rethinkDeleteBlocks(db)
 	b := getTestBlock()
 
 	rethinkWriteToBlock(t, db, []*Block{b})
@@ -211,6 +212,24 @@ func TestRethinkGetOutputs(t *testing.T) {
 		Output: b.Transactions[0].Outputs[0].Clone(),
 	}}
 	actual, err := db.GetOutputs([][]byte{[]byte("output1")})
+	assert.Nil(t, err)
+	assert.Equal(t, expected, actual)
+}
+
+func TestRethinkGetInputsByOutput(t *testing.T) {
+	db := getRethinkDB(t)
+	defer rethinkDeleteBlocks(db)
+	b := getTestBlock()
+
+	rethinkWriteToBlock(t, db, []*Block{b})
+
+	bCopy := b.Clone()
+	bCopy.Transactions = nil
+	expected := []*InputRes{&InputRes{
+		Block: bCopy,
+		Input: b.Transactions[0].Inputs[0].Clone(),
+	}}
+	actual, err := db.GetInputsByOutput([][]byte{[]byte("output1")})
 	assert.Nil(t, err)
 	assert.Equal(t, expected, actual)
 }

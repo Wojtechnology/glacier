@@ -159,6 +159,38 @@ func (db *MemoryBlockchainDB) GetOutputs(outputIds [][]byte) ([]*OutputRes, erro
 	return candidates, nil
 }
 
+func (db *MemoryBlockchainDB) GetInputsByOutput(outputIds [][]byte) ([]*InputRes, error) {
+	db.blockLock.Lock()
+	defer db.blockLock.Unlock()
+
+	candidates := make([]*InputRes, 0)
+	for _, b := range db.blockTable {
+		var bCopy *Block = nil
+		if b.Transactions != nil {
+			for _, tx := range b.Transactions {
+				if tx.Inputs != nil {
+					for _, input := range tx.Inputs {
+						for _, outputId := range outputIds {
+							if bytes.Equal(outputId, input.OutputHash) {
+								if bCopy == nil {
+									bCopy = b.Clone()
+									bCopy.Transactions = nil
+								}
+								candidates = append(candidates, &InputRes{
+									Block: bCopy,
+									Input: input.Clone(),
+								})
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return candidates, nil
+}
+
 func (db *MemoryBlockchainDB) WriteVote(v *Vote) error {
 	db.voteLock.Lock()
 	defer db.voteLock.Unlock()

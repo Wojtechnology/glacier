@@ -24,6 +24,8 @@ type BlockchainDB interface {
 	GetOldestBlocks(int64, int) ([]*Block, error)
 	// Returns outputs for given output ids
 	GetOutputs([][]byte) ([]*OutputRes, error)
+	// Returns inputs for given output ids
+	GetInputsByOutput([][]byte) ([]*InputRes, error)
 
 	// Writes vote to vote table
 	WriteVote(*Vote) error
@@ -78,6 +80,12 @@ type Vote struct {
 type OutputRes struct {
 	Block  *Block
 	Output *Output
+}
+
+// Structure used to return the result of GetInputsByOutput endpoint.
+type InputRes struct {
+	Block *Block
+	Input *Input
 }
 
 func (tx *Transaction) Clone() *Transaction {

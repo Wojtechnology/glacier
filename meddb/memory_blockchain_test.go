@@ -179,6 +179,23 @@ func TestMemoryGetOutputs(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+func TestMemoryGetInputsByOutput(t *testing.T) {
+	db := getMemoryDB(t)
+	b := getTestBlock()
+
+	db.blockTable = map[string]*Block{"block": b}
+
+	bCopy := b.Clone()
+	bCopy.Transactions = nil
+	expected := []*InputRes{&InputRes{
+		Block: bCopy,
+		Input: b.Transactions[0].Inputs[0].Clone(),
+	}}
+	actual, err := db.GetInputsByOutput([][]byte{[]byte("output1")})
+	assert.Nil(t, err)
+	assert.Equal(t, expected, actual)
+}
+
 func TestMemoryWriteVote(t *testing.T) {
 	db := getMemoryDB(t)
 	v := getTestVote()

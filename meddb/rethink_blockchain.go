@@ -146,6 +146,16 @@ func (db *RethinkBlockchainDB) setupBlockIndices() error {
 	if err != nil {
 		return err
 	}
+	_, err = db.blockTable().IndexCreateFunc("input_outputs", func(block r.Term) interface{} {
+		return block.Field("transactions").ConcatMap(func(tx r.Term) interface{} {
+			return tx.Field("inputs").Map(func(input r.Term) interface{} {
+				return input.Field("output_hash")
+			})
+		})
+	}, r.IndexCreateOpts{Multi: true}).RunWrite(db.session)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -334,8 +344,47 @@ func (db *RethinkBlockchainDB) GetOutputs(outputIds [][]byte) ([]*OutputRes, err
 		return nil, err
 	}
 
-	// TODO: map to some other type
 	return fromRethinkOutputRes(rows), nil
+}
+
+type rethinkInputRes struct {
+	Block *rethinkBlock `gorethink:"block"`
+	Input *rethinkInput `gorethink:"input"`
+}
+
+func (db *RethinkBlockchainDB) GetInputsByOutput(outputIds [][]byte) ([]*InputRes, error) {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	ids := make([]interface{}, len(outputIds)) // Why do I have to do this?
+	for i, outputId := range outputIds {
+		ids[i] = outputId
+	}
+
+	res, err := db.blockTable().GetAllByIndex(
+		"input_outputs", ids...,
+	).Distinct().ConcatMap(func(block r.Term) interface{} {
+		return block.Field("transactions").ConcatMap(func(tx r.Term) interface{} {
+			return tx.Field("inputs").Map(func(input r.Term) interface{} {
+				return map[string]interface{}{
+					"block": block.Without("transactions"),
+					"input": input,
+				}
+			})
+		})
+	}).Filter(func(row r.Term) interface{} {
+		return r.Expr(ids).Contains(row.Field("input").Field("output_hash"))
+	}).Run(db.session)
+	if err != nil {
+		return nil, err
+	}
+
+	var rows []*rethinkInputRes
+	if err := res.All(&rows); err != nil {
+		return nil, err
+	}
+
+	return fromRethinkInputRes(rows), nil
 }
 
 func (db *RethinkBlockchainDB) WriteVote(v *Vote) error {
@@ -662,6 +711,17 @@ func fromRethinkOutputRes(rows []*rethinkOutputRes) []*OutputRes {
 		newRows[i] = &OutputRes{
 			Block:  fromRethinkBlock(row.Block),
 			Output: fromRethinkOutput(row.Output),
+		}
+	}
+	return newRows
+}
+
+func fromRethinkInputRes(rows []*rethinkInputRes) []*InputRes {
+	newRows := make([]*InputRes, len(rows))
+	for i, row := range rows {
+		newRows[i] = &InputRes{
+			Block: fromRethinkBlock(row.Block),
+			Input: fromRethinkInput(row.Input),
 		}
 	}
 	return newRows
