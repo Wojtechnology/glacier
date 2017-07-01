@@ -127,6 +127,38 @@ func (db *MemoryBlockchainDB) GetOldestBlocks(start int64, limit int) ([]*Block,
 	return candidates, nil
 }
 
+func (db *MemoryBlockchainDB) GetOutputs(outputIds [][]byte) ([]*OutputRes, error) {
+	db.blockLock.Lock()
+	defer db.blockLock.Unlock()
+
+	candidates := make([]*OutputRes, 0)
+	for _, b := range db.blockTable {
+		var bCopy *Block = nil
+		if b.Transactions != nil {
+			for _, tx := range b.Transactions {
+				if tx.Outputs != nil {
+					for _, output := range tx.Outputs {
+						for _, outputId := range outputIds {
+							if bytes.Equal(outputId, output.Hash) {
+								if bCopy == nil {
+									bCopy = b.Clone()
+									bCopy.Transactions = nil
+								}
+								candidates = append(candidates, &OutputRes{
+									Block:  bCopy,
+									Output: output.Clone(),
+								})
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return candidates, nil
+}
+
 func (db *MemoryBlockchainDB) WriteVote(v *Vote) error {
 	db.voteLock.Lock()
 	defer db.voteLock.Unlock()

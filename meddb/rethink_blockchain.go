@@ -136,6 +136,16 @@ func (db *RethinkBlockchainDB) setupBlockIndices() error {
 	if err != nil {
 		return err
 	}
+	_, err = db.blockTable().IndexCreateFunc("outputs", func(block r.Term) interface{} {
+		return block.Field("transactions").ConcatMap(func(tx r.Term) interface{} {
+			return tx.Field("outputs").Map(func(output r.Term) interface{} {
+				return output.Field("id")
+			})
+		})
+	}, r.IndexCreateOpts{Multi: true}).RunWrite(db.session)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -285,6 +295,47 @@ func (db *RethinkBlockchainDB) GetOldestBlocks(start int64, limit int) ([]*Block
 	}
 
 	return fromRethinkBlocks(rows), nil
+}
+
+type rethinkOutputRes struct {
+	Block  *rethinkBlock  `gorethink:"block"`
+	Output *rethinkOutput `gorethink:"output"`
+}
+
+func (db *RethinkBlockchainDB) GetOutputs(outputIds [][]byte) ([]*OutputRes, error) {
+	db.lock.Lock()
+	defer db.lock.Unlock()
+
+	ids := make([]interface{}, len(outputIds)) // Why do I have to do this?
+	for i, outputId := range outputIds {
+		ids[i] = outputId
+	}
+
+	res, err := db.blockTable().GetAllByIndex(
+		"outputs", ids...,
+	).Distinct().ConcatMap(func(block r.Term) interface{} {
+		return block.Field("transactions").ConcatMap(func(tx r.Term) interface{} {
+			return tx.Field("outputs").Map(func(output r.Term) interface{} {
+				return map[string]interface{}{
+					"block":  block.Without("transactions"),
+					"output": output,
+				}
+			})
+		})
+	}).Filter(func(row r.Term) interface{} {
+		return r.Expr(ids).Contains(row.Field("output").Field("id"))
+	}).Run(db.session)
+	if err != nil {
+		return nil, err
+	}
+
+	var rows []*rethinkOutputRes
+	if err := res.All(&rows); err != nil {
+		return nil, err
+	}
+
+	// TODO: map to some other type
+	return fromRethinkOutputRes(rows), nil
 }
 
 func (db *RethinkBlockchainDB) WriteVote(v *Vote) error {
@@ -603,4 +654,15 @@ func fromRethinkVotes(rethinkVs []*rethinkVote) []*Vote {
 		vs[i] = fromRethinkVote(row)
 	}
 	return vs
+}
+
+func fromRethinkOutputRes(rows []*rethinkOutputRes) []*OutputRes {
+	newRows := make([]*OutputRes, len(rows))
+	for i, row := range rows {
+		newRows[i] = &OutputRes{
+			Block:  fromRethinkBlock(row.Block),
+			Output: fromRethinkOutput(row.Output),
+		}
+	}
+	return newRows
 }

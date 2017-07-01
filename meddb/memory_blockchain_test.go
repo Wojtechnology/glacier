@@ -162,6 +162,23 @@ func TestMemoryGetOldestBlocksEmpty(t *testing.T) {
 	assert.Equal(t, 0, len(res))
 }
 
+func TestMemoryGetOutputs(t *testing.T) {
+	db := getMemoryDB(t)
+	b := getTestBlock()
+
+	db.blockTable = map[string]*Block{"block": b}
+
+	bCopy := b.Clone()
+	bCopy.Transactions = nil
+	expected := []*OutputRes{&OutputRes{
+		Block:  bCopy,
+		Output: b.Transactions[0].Outputs[0].Clone(),
+	}}
+	actual, err := db.GetOutputs([][]byte{[]byte("output1")})
+	assert.Nil(t, err)
+	assert.Equal(t, expected, actual)
+}
+
 func TestMemoryWriteVote(t *testing.T) {
 	db := getMemoryDB(t)
 	v := getTestVote()
