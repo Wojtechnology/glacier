@@ -16,6 +16,7 @@ func TestDBBlockMapper(t *testing.T) {
 		CreatedAt:    big.NewInt(43),
 		Creator:      []byte{44},
 		Voters:       [][]byte{[]byte{45}},
+		State:        BLOCK_STATE_ACCEPTED,
 	}
 	hash := rlpHash(&blockBody{
 		Transactions: []Hash{tx.Hash()},
@@ -32,6 +33,7 @@ func TestDBBlockMapper(t *testing.T) {
 		CreatedAt: big.NewInt(43),
 		Creator:   []byte{44},
 		Voters:    [][]byte{[]byte{45}},
+		State:     1,
 	}
 	actual := b.toDBBlock()
 	assert.Equal(t, expected, actual)

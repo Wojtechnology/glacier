@@ -18,6 +18,7 @@ const (
 type Output interface {
 	Type() OutputType
 	Data() []byte
+	IsConsumable() bool
 }
 
 // --------------------------------
@@ -36,6 +37,10 @@ func (o *TableExistsOutput) Type() OutputType {
 
 func (o *TableExistsOutput) Data() []byte {
 	return o.TableName
+}
+
+func (o *TableExistsOutput) IsConsumable() bool {
+	return false
 }
 
 // -------

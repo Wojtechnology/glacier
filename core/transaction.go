@@ -7,6 +7,14 @@ import (
 	"github.com/wojtechnology/glacier/meddb"
 )
 
+type TransactionType int
+
+const (
+	TRANSACTION_TYPE_CREATE_TABLE TransactionType = iota // CREATE_TABLE = 0
+	TRANSACTION_TYPE_UPDATE_TABLE                        // UPDATE_TABLE = 1
+	TRANSACTION_TYPE_PUT_CELLS                           // PUT_CELLS = 2
+)
+
 type Cell struct {
 	Data  []byte
 	VerId *big.Int
@@ -15,6 +23,7 @@ type Cell struct {
 type Transaction struct {
 	AssignedTo []byte // TODO: Make more strict type for public keys
 	AssignedAt *big.Int
+	Type       TransactionType
 	TableName  []byte
 	RowId      []byte
 	Cols       map[string]*Cell
@@ -33,6 +42,7 @@ type colCell struct {
 
 // Part of transaction used in hash
 type transactionBody struct {
+	Type         *big.Int
 	TableName    []byte
 	RowId        []byte
 	Cols         []*colCell
@@ -76,6 +86,7 @@ func (tx *Transaction) Hash() Hash {
 	}
 
 	return rlpHash(&transactionBody{
+		Type:         intToBigInt(int(tx.Type)),
 		TableName:    tx.TableName,
 		RowId:        tx.RowId,
 		Cols:         cols,
@@ -84,7 +95,7 @@ func (tx *Transaction) Hash() Hash {
 	})
 }
 
-func (tx *Transaction) Validate() bool {
+func (tx *Transaction) Validate(usedOutputs []*Output) bool {
 	return true
 }
 
@@ -126,6 +137,7 @@ func (tx *Transaction) toDBTransaction() *meddb.Transaction {
 		Hash:       tx.Hash().Bytes(),
 		AssignedTo: tx.AssignedTo,
 		AssignedAt: lastAssigned,
+		Type:       int(tx.Type),
 		TableName:  tx.TableName,
 		RowId:      tx.RowId,
 		Cols:       cols,
@@ -173,6 +185,7 @@ func fromDBTransaction(tx *meddb.Transaction) *Transaction {
 	return &Transaction{
 		AssignedTo: tx.AssignedTo,
 		AssignedAt: lastAssigned,
+		Type:       TransactionType(tx.Type),
 		TableName:  tx.TableName,
 		RowId:      tx.RowId,
 		Cols:       cols,

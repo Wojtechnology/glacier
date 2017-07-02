@@ -280,6 +280,7 @@ func getTestTransaction() *Transaction {
 		Hash:       []byte{32},
 		AssignedTo: []byte{42},
 		AssignedAt: big.NewInt(123),
+		Type:       2,
 		TableName:  []byte{52},
 		RowId:      []byte{62},
 		Cols: map[string]*Cell{
@@ -306,6 +307,7 @@ func getTestBlock() *Block {
 		CreatedAt:    big.NewInt(162),
 		Creator:      []byte{172},
 		Voters:       [][]byte{[]byte{182}},
+		State:        1,
 	}
 }
 

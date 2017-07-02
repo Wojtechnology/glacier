@@ -32,6 +32,7 @@ type rethinkTransaction struct {
 	Hash       []byte                         `gorethink:"id"`
 	AssignedTo []byte                         `gorethink:"assigned_to"`
 	AssignedAt []byte                         `gorethink:"assigned_at"`
+	Type       int                            `gorethink:"type"`
 	TableName  []byte                         `gorethink:"table_name"`
 	RowId      []byte                         `gorethink:"row_id"`
 	Cols       map[string]*rethinkPartialCell `gorethink:"cols"`
@@ -57,6 +58,7 @@ type rethinkBlock struct {
 	CreatedAt    []byte                `gorethink:"created_at"`
 	Creator      []byte                `gorethink:"creator"`
 	Voters       [][]byte              `gorethink:"voters"`
+	State        int                   `gorethink:"state"`
 }
 
 type rethinkVote struct {
@@ -517,6 +519,7 @@ func newRethinkTransaction(tx *Transaction) *rethinkTransaction {
 		Hash:       tx.Hash,
 		AssignedTo: tx.AssignedTo,
 		AssignedAt: assignedAt,
+		Type:       tx.Type,
 		TableName:  tx.TableName,
 		RowId:      tx.RowId,
 		Cols:       cols,
@@ -562,6 +565,7 @@ func fromRethinkTransaction(tx *rethinkTransaction) *Transaction {
 		Hash:       tx.Hash,
 		AssignedTo: tx.AssignedTo,
 		AssignedAt: assignedAt,
+		Type:       tx.Type,
 		TableName:  tx.TableName,
 		RowId:      tx.RowId,
 		Cols:       cols,
@@ -631,6 +635,7 @@ func newRethinkBlock(b *Block) *rethinkBlock {
 		CreatedAt:    createdAt,
 		Creator:      b.Creator,
 		Voters:       b.Voters,
+		State:        b.State,
 	}
 }
 
@@ -654,6 +659,7 @@ func fromRethinkBlock(b *rethinkBlock) *Block {
 		CreatedAt:    createdAt,
 		Creator:      b.Creator,
 		Voters:       b.Voters,
+		State:        b.State,
 	}
 }
 

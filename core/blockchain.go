@@ -62,6 +62,33 @@ func (bc *Blockchain) GetStaleTransactions(staleAge int64) ([]*Transaction, erro
 	return fromDBTransactions(dbTxs), nil
 }
 
+// Validates transaction.
+// Returns nil when validation is successful, returns error with reason otherwise.
+func (bc *Blockchain) ValidateTransaction(tx *Transaction) error {
+	linkedOutputIds := make([][]byte, len(tx.Inputs))
+	for i, input := range tx.Inputs {
+		linkedOutputIds[i] = input.OutputHash().Bytes()
+	}
+
+	// Gets outputs that are linked to by an input in the transaction.
+	_, err := bc.db.GetOutputs(linkedOutputIds)
+	if err != nil {
+		return err
+	}
+
+	// Check if all outputs exist in a not-rejected block
+	//   If not, return error
+	// Check if any outputs are in undecided blocks
+	//   If so, return error with message to put this transaction back in backlog
+
+	// For all consumable outputs, get all inputs that link to that output
+	// Filter out all inputs in rejected blocks
+
+	// Validate transaction passing in the linkedOutputs and spentInputs
+
+	return nil
+}
+
 // Proxy to db to delete transactions from backlog.
 func (bc *Blockchain) DeleteTransactions(txs []*Transaction) error {
 	dbTxs := make([]*meddb.Transaction, len(txs))

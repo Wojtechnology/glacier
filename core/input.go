@@ -11,7 +11,7 @@ import (
 type InputType int
 
 const (
-	INPUT_TYPE_ADMIN InputType = iota // ADMIN = 1 - user can modify table
+	INPUT_TYPE_ADMIN InputType = iota // ADMIN = 0 - user can modify table
 )
 
 type Input interface {

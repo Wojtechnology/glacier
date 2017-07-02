@@ -13,6 +13,7 @@ func TestTransactionHash(t *testing.T) {
 	tx := &Transaction{
 		AssignedTo: []byte{12},
 		AssignedAt: big.NewInt(420),
+		Type:       TRANSACTION_TYPE_PUT_CELLS,
 		TableName:  []byte{123},
 		RowId:      []byte{124},
 		Cols: map[string]*Cell{
@@ -30,6 +31,7 @@ func TestTransactionHash(t *testing.T) {
 	}
 
 	expected := rlpHash(&transactionBody{
+		Type:      big.NewInt(2),
 		TableName: tx.TableName,
 		RowId:     tx.RowId,
 		Cols: []*colCell{
@@ -64,6 +66,7 @@ func TestDBTransactionMapper(t *testing.T) {
 	tx := &Transaction{
 		AssignedTo: []byte{12},
 		AssignedAt: big.NewInt(420),
+		Type:       TRANSACTION_TYPE_PUT_CELLS,
 		TableName:  []byte{123},
 		RowId:      []byte{124},
 		Cols: map[string]*Cell{
@@ -76,6 +79,7 @@ func TestDBTransactionMapper(t *testing.T) {
 		Inputs:  []Input{&AdminInput{InputLink{}, []byte{2}}, &AdminInput{InputLink{}, []byte{3}}},
 	}
 	hash := rlpHash(&transactionBody{
+		Type:      big.NewInt(2),
 		TableName: tx.TableName,
 		RowId:     tx.RowId,
 		Cols: []*colCell{
@@ -99,6 +103,7 @@ func TestDBTransactionMapper(t *testing.T) {
 
 	expected := &meddb.Transaction{
 		Hash:      hash.Bytes(),
+		Type:      2,
 		TableName: []byte{123},
 		RowId:     []byte{124},
 		Cols: map[string]*meddb.Cell{

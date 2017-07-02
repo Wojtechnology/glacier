@@ -6,11 +6,20 @@ import (
 	"github.com/wojtechnology/glacier/meddb"
 )
 
+type BlockState int
+
+const (
+	BLOCK_STATE_UNDECIDED BlockState = iota // UNDECIDED = 0
+	BLOCK_STATE_ACCEPTED                    // ACCEPTED  = 1
+	BLOCK_STATE_REJECTED                    // REJECTED  = 2
+)
+
 type Block struct {
 	Transactions []*Transaction // Contains hashes of all contained transactions
 	CreatedAt    *big.Int       // Time at which block was created, will be used to determine order
 	Creator      []byte
 	Voters       [][]byte
+	State        BlockState
 }
 
 // ---------
@@ -54,6 +63,7 @@ func (b *Block) toDBBlock() *meddb.Block {
 		CreatedAt:    createdAt,
 		Creator:      b.Creator,
 		Voters:       b.Voters,
+		State:        int(b.State),
 	}
 }
 
@@ -77,6 +87,7 @@ func fromDBBlock(b *meddb.Block) *Block {
 		CreatedAt:    createdAt,
 		Creator:      b.Creator,
 		Voters:       b.Voters,
+		State:        BlockState(b.State),
 	}
 }
 

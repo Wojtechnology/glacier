@@ -40,6 +40,7 @@ type Transaction struct {
 	Hash       []byte
 	AssignedTo []byte // Public key of node this transaction is assigned to
 	AssignedAt *big.Int
+	Type       int
 	TableName  []byte
 	RowId      []byte
 	Cols       map[string]*Cell
@@ -65,6 +66,7 @@ type Block struct {
 	CreatedAt    *big.Int
 	Creator      []byte
 	Voters       [][]byte
+	State        int
 }
 
 type Vote struct {
@@ -125,6 +127,7 @@ func (tx *Transaction) Clone() *Transaction {
 		Hash:       tx.Hash,
 		AssignedTo: tx.AssignedTo,
 		AssignedAt: lastAssigned,
+		Type:       tx.Type,
 		TableName:  tx.TableName,
 		RowId:      tx.RowId,
 		Cols:       cols,
@@ -161,6 +164,7 @@ func (b *Block) Clone() *Block {
 		CreatedAt:    createdAt,
 		Creator:      b.Creator,
 		Voters:       b.Voters,
+		State:        b.State,
 	}
 }
 
