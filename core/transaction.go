@@ -95,8 +95,10 @@ func (tx *Transaction) Hash() Hash {
 	})
 }
 
-func (tx *Transaction) Validate(usedOutputs []*Output) bool {
-	return true
+func (tx *Transaction) Validate(linkedOutputs []Output, spentInputs []Input) error {
+	// Get ruleset
+	// Iterate over rules, collect ones that are shit and return error if necessary
+	return nil
 }
 
 func (tx *Transaction) toDBTransaction() *meddb.Transaction {

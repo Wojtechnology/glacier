@@ -71,22 +71,76 @@ func (bc *Blockchain) ValidateTransaction(tx *Transaction) error {
 	}
 
 	// Gets outputs that are linked to by an input in the transaction.
-	_, err := bc.db.GetOutputs(linkedOutputIds)
+	linkedOutputRes, err := bc.db.GetOutputs(linkedOutputIds)
 	if err != nil {
 		return err
 	}
 
-	// Check if all outputs exist in a not-rejected block
-	//   If not, return error
-	// Check if any outputs are in undecided blocks
-	//   If so, return error with message to put this transaction back in backlog
+	acceptedOutputs := make(map[string]Output)
+	undecidedOutputs := make(map[string]Output)
+
+	for _, outputRes := range linkedOutputRes {
+		output, err := fromDBOutput(outputRes.Output)
+		if err != nil {
+			return err
+		}
+		switch BlockState(outputRes.Block.State) {
+		case BLOCK_STATE_UNDECIDED:
+			undecidedOutputs[hashOutput(output).String()] = output
+		case BLOCK_STATE_ACCEPTED:
+			acceptedOutputs[hashOutput(output).String()] = output
+		}
+	}
+
+	// Look for outputs that only exist in undecided or rejected blocks
+	consumableOutputIds := make([][]byte, 0)
+	undecidedOutputIds := make([][]byte, 0)
+	rejectedOutputIds := make([][]byte, 0) // rejected or missing
+	for _, outputId := range linkedOutputIds {
+		if _, ok := acceptedOutputs[string(outputId)]; !ok {
+			if _, undecidedOk := undecidedOutputs[string(outputId)]; undecidedOk {
+				undecidedOutputIds = append(undecidedOutputIds, outputId)
+			} else {
+				rejectedOutputIds = append(rejectedOutputIds, outputId)
+			}
+		} else {
+			if acceptedOutputs[string(outputId)].IsConsumable() {
+				consumableOutputIds = append(consumableOutputIds, outputId)
+			}
+		}
+	}
+
+	if len(rejectedOutputIds) > 0 { // rejected or missing
+		return &MissingOutputsError{OutputIds: rejectedOutputIds}
+	} else if len(undecidedOutputs) > 0 {
+		return &UndecidedOutputsError{OutputIds: undecidedOutputIds}
+	}
 
 	// For all consumable outputs, get all inputs that link to that output
-	// Filter out all inputs in rejected blocks
+	spentInputRes, err := bc.db.GetInputsByOutput(consumableOutputIds)
+	if err != nil {
+		return err
+	}
 
-	// Validate transaction passing in the linkedOutputs and spentInputs
+	spentInputs := make([]Input, 0)
+	for _, inputRes := range spentInputRes {
+		if BlockState(inputRes.Block.State) != BLOCK_STATE_REJECTED {
+			input, err := fromDBInput(inputRes.Input)
+			if err != nil {
+				return err
+			}
+			spentInputs = append(spentInputs, input)
+		}
+	}
 
-	return nil
+	linkedOutputs := make([]Output, len(linkedOutputIds))
+	i := 0
+	for _, output := range acceptedOutputs {
+		linkedOutputs[i] = output
+		i++
+	}
+
+	return tx.Validate(linkedOutputs, spentInputs)
 }
 
 // Proxy to db to delete transactions from backlog.
