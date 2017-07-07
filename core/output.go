@@ -12,13 +12,16 @@ type OutputType int
 
 // Defines OutputType "enum"
 const (
-	OUTPUT_TYPE_TABLE_EXISTS OutputType = iota // TABLE_EXISTS = 0 - unique table names
+	OUTPUT_TYPE_TABLE_EXISTS     OutputType = iota // TABLE_EXISTS     = 0 - unique table names
+	OUTPUT_TYPE_COL_ALLOWED                        // COL_ALLOWED      = 1
+	OUTPUT_TYPE_ALL_COLS_ALLOWED                   // ALL_COLS_ALLOWED = 2
 )
 
 type Output interface {
 	Type() OutputType
 	Data() []byte
 	IsConsumable() bool
+	FromData([]byte) error
 }
 
 // --------------------------------
@@ -41,6 +44,70 @@ func (o *TableExistsOutput) Data() []byte {
 
 func (o *TableExistsOutput) IsConsumable() bool {
 	return false
+}
+
+func (o *TableExistsOutput) FromData(data []byte) error {
+	o.TableName = data
+	return nil
+}
+
+// --------------------------------
+// ColumnAllowedOutput implementation
+//
+// Used to check if you can write to the given column in the table
+// --------------------------------
+
+type ColAllowedOutput struct {
+	TableName []byte
+	ColName   []byte
+}
+
+func (o *ColAllowedOutput) Type() OutputType {
+	return OUTPUT_TYPE_COL_ALLOWED
+}
+
+func (o *ColAllowedOutput) Data() []byte {
+	// TODO: Log on error here, should never happen
+	data, _ := rlpEncode(o)
+	return data
+}
+
+func (o *ColAllowedOutput) IsConsumable() bool {
+	return false
+}
+
+func (o *ColAllowedOutput) FromData(data []byte) error {
+	if err := rlpDecode(data, o); err != nil {
+		return err
+	}
+	return nil
+}
+
+// --------------------------------
+// AllColsAllowedOutput implementation
+//
+// Used to check if you can write to the given column in the table
+// --------------------------------
+
+type AllColsAllowedOutput struct {
+	TableName []byte
+}
+
+func (o *AllColsAllowedOutput) Type() OutputType {
+	return OUTPUT_TYPE_ALL_COLS_ALLOWED
+}
+
+func (o *AllColsAllowedOutput) Data() []byte {
+	return o.TableName
+}
+
+func (o *AllColsAllowedOutput) IsConsumable() bool {
+	return false
+}
+
+func (o *AllColsAllowedOutput) FromData(data []byte) error {
+	o.TableName = data
+	return nil
 }
 
 // -------
@@ -73,11 +140,22 @@ func toDBOutput(o Output) *meddb.Output {
 
 // Mapper from db Output object to the appropriate core Output implementation.
 func fromDBOutput(o *meddb.Output) (Output, error) {
+	var coreOutput Output
+
 	switch OutputType(o.Type) {
 	case OUTPUT_TYPE_TABLE_EXISTS:
-		// Maybe have some other interface for this
-		return &TableExistsOutput{TableName: o.Data}, nil
+		coreOutput = &TableExistsOutput{}
+	case OUTPUT_TYPE_COL_ALLOWED:
+		coreOutput = &ColAllowedOutput{}
+	case OUTPUT_TYPE_ALL_COLS_ALLOWED:
+		coreOutput = &AllColsAllowedOutput{}
 	default:
 		return nil, errors.New(fmt.Sprintf("Invalid output type %d\n", o.Type))
 	}
+
+	if err := coreOutput.FromData(o.Data); err != nil {
+		return nil, err
+	}
+
+	return coreOutput, nil
 }

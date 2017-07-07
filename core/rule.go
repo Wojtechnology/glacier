@@ -61,3 +61,65 @@ func (rule *TableMissingRule) Validate(tx *Transaction, linkedOutputs map[string
 	}
 	return nil
 }
+
+// --------------------------------
+// ColAllowedRule implementation
+//
+// Used to check whether given columns are allowed for given table
+// --------------------------------
+
+type ColsAllowedRule struct{}
+
+func (rule *ColsAllowedRule) getAllColsAllowedOutputHash(tx *Transaction) Hash {
+	return hashOutput(&AllColsAllowedOutput{TableName: tx.TableName})
+}
+
+func (rule *ColsAllowedRule) getColAllowedOutputHashes(tx *Transaction) []Hash {
+	hashes := make([]Hash, len(tx.Cols))
+
+	i := 0
+	for colId, _ := range tx.Cols {
+		hashes[i] = hashOutput(&ColAllowedOutput{TableName: tx.TableName, ColName: []byte(colId)})
+		i++
+	}
+
+	return hashes
+}
+
+func (rule *ColsAllowedRule) RequiredOutputIds(tx *Transaction) [][]byte {
+	colAllowedHashes := rule.getColAllowedOutputHashes(tx)
+	outputIds := make([][]byte, len(colAllowedHashes))
+
+	for i, hash := range colAllowedHashes {
+		outputIds[i] = hash.Bytes()
+	}
+
+	outputIds = append(outputIds, rule.getAllColsAllowedOutputHash(tx).Bytes())
+	return outputIds
+}
+
+func (rule *ColsAllowedRule) Validate(tx *Transaction, linkedOutputs map[string]Output,
+	spentInputs map[string][]Input) error {
+
+	allColsHash := rule.getAllColsAllowedOutputHash(tx).String()
+	if _, ok := linkedOutputs[allColsHash]; ok {
+		// All columns are allowed on this table, let it slide
+		return nil
+	}
+
+	// Otherwise check if all columns are allowed
+	colAllowedHashes := rule.getColAllowedOutputHashes(tx)
+	disallowedCols := make([][]byte, 0)
+
+	for _, hash := range colAllowedHashes {
+		if _, ok := linkedOutputs[hash.String()]; !ok {
+			disallowedCols = append(disallowedCols, hash.Bytes())
+		}
+	}
+
+	if len(disallowedCols) > 0 {
+		return errors.New(fmt.Sprintf("Columns not allowed: %v\n", disallowedCols))
+	}
+
+	return nil
+}
