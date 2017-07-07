@@ -17,3 +17,11 @@ type UndecidedOutputsError struct {
 func (e *UndecidedOutputsError) Error() string {
 	return fmt.Sprintf("Outputs undecided: %v", e.OutputIds)
 }
+
+type RuleErrors struct {
+	Errors []error
+}
+
+func (e *RuleErrors) Error() string {
+	return fmt.Sprintf("Some errors occured when validating transaction: %v\n", e.Errors)
+}

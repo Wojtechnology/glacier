@@ -70,6 +70,14 @@ func (bc *Blockchain) ValidateTransaction(tx *Transaction) error {
 		linkedOutputIds[i] = input.OutputHash().Bytes()
 	}
 
+	ruleset, err := tx.GetRuleset()
+	if err != nil {
+		return err
+	}
+	for _, rule := range ruleset {
+		linkedOutputIds = append(linkedOutputIds, rule.RequiredOutputIds(tx)...)
+	}
+
 	// Gets outputs that are linked to by an input in the transaction.
 	linkedOutputRes, err := bc.db.GetOutputs(linkedOutputIds)
 	if err != nil {
@@ -122,25 +130,23 @@ func (bc *Blockchain) ValidateTransaction(tx *Transaction) error {
 		return err
 	}
 
-	spentInputs := make([]Input, 0)
+	spentInputs := make(map[string][]Input)
 	for _, inputRes := range spentInputRes {
 		if BlockState(inputRes.Block.State) != BLOCK_STATE_REJECTED {
 			input, err := fromDBInput(inputRes.Input)
 			if err != nil {
 				return err
 			}
-			spentInputs = append(spentInputs, input)
+			outputId := input.OutputHash().String()
+			if _, ok := spentInputs[outputId]; ok {
+				spentInputs[outputId] = append(spentInputs[outputId], input)
+			} else {
+				spentInputs[outputId] = []Input{input}
+			}
 		}
 	}
 
-	linkedOutputs := make([]Output, len(linkedOutputIds))
-	i := 0
-	for _, output := range acceptedOutputs {
-		linkedOutputs[i] = output
-		i++
-	}
-
-	return tx.Validate(linkedOutputs, spentInputs)
+	return tx.Validate(acceptedOutputs, spentInputs)
 }
 
 // Proxy to db to delete transactions from backlog.

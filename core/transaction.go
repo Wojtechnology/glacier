@@ -1,6 +1,8 @@
 package core
 
 import (
+	"errors"
+	"fmt"
 	"math/big"
 	"sort"
 
@@ -95,9 +97,44 @@ func (tx *Transaction) Hash() Hash {
 	})
 }
 
-func (tx *Transaction) Validate(linkedOutputs []Output, spentInputs []Input) error {
-	// Get ruleset
-	// Iterate over rules, collect ones that are shit and return error if necessary
+var rulesets = map[TransactionType][]Rule{
+	TRANSACTION_TYPE_CREATE_TABLE: []Rule{
+		&TableMissingRule{},
+	},
+	TRANSACTION_TYPE_UPDATE_TABLE: []Rule{
+		&TableExistsRule{},
+	},
+	TRANSACTION_TYPE_PUT_CELLS: []Rule{
+		&TableExistsRule{},
+	},
+}
+
+func (tx *Transaction) GetRuleset() ([]Rule, error) {
+	if ruleset, ok := rulesets[tx.Type]; ok {
+		return ruleset, nil
+	} else {
+		return nil, errors.New(fmt.Sprintf("Invalid tx type: %v\n", tx.Type))
+	}
+}
+
+func (tx *Transaction) Validate(linkedOutputs map[string]Output,
+	spentInputs map[string][]Input) error {
+
+	ruleset, err := tx.GetRuleset()
+	if err != nil {
+		return err
+	}
+
+	errs := make([]error, 0)
+	for _, rule := range ruleset {
+		if err := rule.Validate(tx, linkedOutputs, spentInputs); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if len(errs) > 0 {
+		return &RuleErrors{Errors: errs}
+	}
 	return nil
 }
 
