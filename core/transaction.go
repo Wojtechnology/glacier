@@ -33,6 +33,20 @@ type Transaction struct {
 	Inputs     []Input
 }
 
+var rulesets = map[TransactionType][]Rule{
+	TRANSACTION_TYPE_CREATE_TABLE: []Rule{
+		&TableMissingRule{},
+	},
+	TRANSACTION_TYPE_UPDATE_TABLE: []Rule{
+		&TableExistsRule{},
+		&AdminRule{},
+	},
+	TRANSACTION_TYPE_PUT_CELLS: []Rule{
+		&TableExistsRule{},
+		&ColsAllowedRule{},
+	},
+}
+
 // ---------------
 // Transaction API
 // ---------------
@@ -95,19 +109,6 @@ func (tx *Transaction) Hash() Hash {
 		OutputHashes: outputHashes,
 		InputHashes:  inputHashes,
 	})
-}
-
-var rulesets = map[TransactionType][]Rule{
-	TRANSACTION_TYPE_CREATE_TABLE: []Rule{
-		&TableMissingRule{},
-	},
-	TRANSACTION_TYPE_UPDATE_TABLE: []Rule{
-		&TableExistsRule{},
-	},
-	TRANSACTION_TYPE_PUT_CELLS: []Rule{
-		&TableExistsRule{},
-		&ColsAllowedRule{},
-	},
 }
 
 func (tx *Transaction) GetRuleset() ([]Rule, error) {

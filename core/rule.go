@@ -1,8 +1,11 @@
 package core
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+
+	"github.com/wojtechnology/glacier/crypto"
 )
 
 type Rule interface {
@@ -119,6 +122,66 @@ func (rule *ColsAllowedRule) Validate(tx *Transaction, linkedOutputs map[string]
 
 	if len(disallowedCols) > 0 {
 		return errors.New(fmt.Sprintf("Columns not allowed: %v\n", disallowedCols))
+	}
+
+	return nil
+}
+
+// --------------------------------
+// AdminRule implementation
+//
+// Used to check whether given admin can update the table
+// --------------------------------
+
+type AdminRule struct{}
+
+func (rule *AdminRule) getAllAdminsOutputHash(tx *Transaction) Hash {
+	return hashOutput(&AllAdminsOutput{TableName: tx.TableName})
+}
+
+func (rule *AdminRule) RequiredOutputIds(tx *Transaction) [][]byte {
+	return [][]byte{rule.getAllAdminsOutputHash(tx).Bytes()}
+}
+
+func (rule *AdminRule) Validate(tx *Transaction, linkedOutputs map[string]Output,
+	spentInputs map[string][]Input) error {
+
+	allAdminsHash := rule.getAllAdminsOutputHash(tx).String()
+	if _, ok := linkedOutputs[allAdminsHash]; ok {
+		// All admins can update the table
+		return nil
+	}
+
+	adminInputs := make([]*AdminInput, 0)
+	for _, input := range tx.Inputs {
+		if adminInput, ok := input.(*AdminInput); ok {
+			adminInputs = append(adminInputs, adminInput)
+		}
+	}
+
+	if len(adminInputs) != 1 {
+		return errors.New(fmt.Sprintf("Must have exactly 1 admin input. Have %v\n",
+			len(adminInputs)))
+	}
+
+	adminInput := adminInputs[0]
+	output, outputExists := linkedOutputs[adminInput.OutputHash().String()]
+	if !outputExists {
+		return errors.New(fmt.Sprintf("Output missing: %v\n", adminInput.OutputHash().Bytes()))
+	}
+
+	adminOutput, outputTypeCorrect := output.(*AdminOutput)
+	if !outputTypeCorrect {
+		return errors.New(fmt.Sprintf("Invalid output type: %v\n", output))
+	}
+
+	pubKey, err := crypto.RetrievePublicKey(tx.Hash().Bytes(), adminInput.Sig)
+	if err != nil {
+		return err
+	}
+
+	if !bytes.Equal(pubKey, adminOutput.PubKey) {
+		return errors.New("Signature invalid\n")
 	}
 
 	return nil

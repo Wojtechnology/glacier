@@ -18,7 +18,12 @@ type Input interface {
 	OutputHash() Hash
 	Type() InputType
 	Data() []byte
+	FromData([]byte) error
 }
+
+// ---------
+// InputLink
+// ---------
 
 // Forms a link from an input to an output
 type InputLink struct {
@@ -29,9 +34,15 @@ func (link *InputLink) OutputHash() Hash {
 	return link.LinksTo
 }
 
+// --------------------------------
+// AdminInput implementation
+//
+// Allows a particular user to update a table
+// --------------------------------
+
 type AdminInput struct {
 	InputLink
-	PubKey []byte
+	Sig []byte
 }
 
 func (in *AdminInput) Type() InputType {
@@ -39,7 +50,12 @@ func (in *AdminInput) Type() InputType {
 }
 
 func (in *AdminInput) Data() []byte {
-	return in.PubKey
+	return in.Sig
+}
+
+func (in *AdminInput) FromData(data []byte) error {
+	in.Sig = data
+	return nil
 }
 
 // -------
@@ -69,10 +85,18 @@ func toDBInput(in Input) *meddb.Input {
 }
 
 func fromDBInput(in *meddb.Input) (Input, error) {
+	var coreInput Input
+
 	switch InputType(in.Type) {
 	case INPUT_TYPE_ADMIN:
-		return &AdminInput{InputLink{BytesToHash(in.OutputHash)}, in.Data}, nil
+		coreInput = &AdminInput{InputLink: InputLink{BytesToHash(in.OutputHash)}}
 	default:
 		return nil, errors.New(fmt.Sprint("Invalid input type: %d\n", in.Type))
 	}
+
+	if err := coreInput.FromData(in.Data); err != nil {
+		return nil, err
+	}
+
+	return coreInput, nil
 }

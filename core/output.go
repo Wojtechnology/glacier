@@ -12,9 +12,11 @@ type OutputType int
 
 // Defines OutputType "enum"
 const (
-	OUTPUT_TYPE_TABLE_EXISTS     OutputType = iota // TABLE_EXISTS     = 0 - unique table names
+	OUTPUT_TYPE_TABLE_EXISTS     OutputType = iota // TABLE_EXISTS     = 0
 	OUTPUT_TYPE_COL_ALLOWED                        // COL_ALLOWED      = 1
 	OUTPUT_TYPE_ALL_COLS_ALLOWED                   // ALL_COLS_ALLOWED = 2
+	OUTPUT_TYPE_ALL_ADMINS                         // ALL_ADMINS       = 3
+	OUTPUT_TYPE_ADMIN                              // ADMIN            = 4
 )
 
 type Output interface {
@@ -110,6 +112,61 @@ func (o *AllColsAllowedOutput) FromData(data []byte) error {
 	return nil
 }
 
+// --------------------------------
+// AllAdminsOutput implementation
+//
+// Signals that all users can update this table
+// --------------------------------
+
+type AllAdminsOutput struct {
+	TableName []byte
+}
+
+func (o *AllAdminsOutput) Type() OutputType {
+	return OUTPUT_TYPE_ALL_ADMINS
+}
+
+func (o *AllAdminsOutput) Data() []byte {
+	return o.TableName
+}
+
+func (o *AllAdminsOutput) IsConsumable() bool {
+	return false
+}
+
+func (o *AllAdminsOutput) FromData(data []byte) error {
+	o.TableName = data
+	return nil
+}
+
+// --------------------------------
+// AdminOutput implementation
+//
+// Allows a particular user to update a table
+// --------------------------------
+
+type AdminOutput struct {
+	TableName []byte
+	PubKey    []byte
+}
+
+func (o *AdminOutput) Type() OutputType {
+	return OUTPUT_TYPE_ALL_ADMINS
+}
+
+func (o *AdminOutput) Data() []byte {
+	return o.TableName
+}
+
+func (o *AdminOutput) IsConsumable() bool {
+	return false
+}
+
+func (o *AdminOutput) FromData(data []byte) error {
+	o.TableName = data
+	return nil
+}
+
 // -------
 // Helpers
 // -------
@@ -149,6 +206,8 @@ func fromDBOutput(o *meddb.Output) (Output, error) {
 		coreOutput = &ColAllowedOutput{}
 	case OUTPUT_TYPE_ALL_COLS_ALLOWED:
 		coreOutput = &AllColsAllowedOutput{}
+	case OUTPUT_TYPE_ALL_ADMINS:
+		coreOutput = &AllAdminsOutput{}
 	default:
 		return nil, errors.New(fmt.Sprintf("Invalid output type %d\n", o.Type))
 	}
