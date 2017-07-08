@@ -167,12 +167,13 @@ func (rule *AdminRule) Validate(tx *Transaction, linkedOutputs map[string]Output
 	adminInput := adminInputs[0]
 	output, outputExists := linkedOutputs[adminInput.OutputHash().String()]
 	if !outputExists {
-		return errors.New(fmt.Sprintf("Output missing: %v\n", adminInput.OutputHash().Bytes()))
+		return errors.New(fmt.Sprintf("Output missing for admin rule: %v\n",
+			adminInput.OutputHash().Bytes()))
 	}
 
 	adminOutput, outputTypeCorrect := output.(*AdminOutput)
 	if !outputTypeCorrect {
-		return errors.New(fmt.Sprintf("Invalid output type: %v\n", output))
+		return errors.New(fmt.Sprintf("Invalid output type for admin rule: %v\n", output))
 	}
 
 	pubKey, err := crypto.RetrievePublicKey(tx.Hash().Bytes(), adminInput.Sig)
@@ -181,6 +182,67 @@ func (rule *AdminRule) Validate(tx *Transaction, linkedOutputs map[string]Output
 	}
 
 	if !bytes.Equal(pubKey, adminOutput.PubKey) {
+		return errors.New("Signature invalid\n")
+	}
+
+	return nil
+}
+
+// --------------------------------
+// WriterRule implementation
+//
+// Used to check whether user can write to the table
+// --------------------------------
+
+type WriterRule struct{}
+
+func (rule *WriterRule) getAllWritersOutputHash(tx *Transaction) Hash {
+	return hashOutput(&AllWritersOutput{TableName: tx.TableName})
+}
+
+func (rule *WriterRule) RequiredOutputIds(tx *Transaction) [][]byte {
+	return [][]byte{rule.getAllWritersOutputHash(tx).Bytes()}
+}
+
+func (rule *WriterRule) Validate(tx *Transaction, linkedOutputs map[string]Output,
+	spentInputs map[string][]Input) error {
+
+	allWritersHash := rule.getAllWritersOutputHash(tx).String()
+	if _, ok := linkedOutputs[allWritersHash]; ok {
+		// All writers can update the table
+		return nil
+	}
+
+	writerInputs := make([]*WriterInput, 0)
+	for _, input := range tx.Inputs {
+		if writerInput, ok := input.(*WriterInput); ok {
+			writerInputs = append(writerInputs, writerInput)
+		}
+	}
+
+	if len(writerInputs) != 1 {
+		return errors.New(fmt.Sprintf("Must have exactly 1 writer input. Have %v\n",
+			len(writerInputs)))
+	}
+
+	writerInput := writerInputs[0]
+	output, outputExists := linkedOutputs[writerInput.OutputHash().String()]
+	if !outputExists {
+		return errors.New(fmt.Sprintf("Output missing for writer rule: %v\n",
+			writerInput.OutputHash().Bytes()))
+	}
+
+	writerOutput, outputTypeCorrect := output.(*WriterOutput)
+	if !outputTypeCorrect {
+		return errors.New(fmt.Sprintf("Invalid output type for writer rule: %v\n", output))
+	}
+
+	pubKey, err := crypto.RetrievePublicKey(tx.Hash().Bytes(), writerInput.Sig)
+	if err != nil {
+		return err
+	}
+
+	if !bytes.Equal(pubKey, writerOutput.PubKey) {
 		return errors.New("Signature invalid\n")
 	}
 

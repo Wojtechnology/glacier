@@ -17,6 +17,8 @@ const (
 	OUTPUT_TYPE_ALL_COLS_ALLOWED                   // ALL_COLS_ALLOWED = 2
 	OUTPUT_TYPE_ALL_ADMINS                         // ALL_ADMINS       = 3
 	OUTPUT_TYPE_ADMIN                              // ADMIN            = 4
+	OUTPUT_TYPE_ALL_WRITERS                        // ALL_WRITERS      = 5
+	OUTPUT_TYPE_WRITER                             // WRITER           = 6
 )
 
 type Output interface {
@@ -151,11 +153,13 @@ type AdminOutput struct {
 }
 
 func (o *AdminOutput) Type() OutputType {
-	return OUTPUT_TYPE_ALL_ADMINS
+	return OUTPUT_TYPE_ADMIN
 }
 
 func (o *AdminOutput) Data() []byte {
-	return o.TableName
+	// TODO: Log on error here, should never happen
+	data, _ := rlpEncode(o)
+	return data
 }
 
 func (o *AdminOutput) IsConsumable() bool {
@@ -163,7 +167,68 @@ func (o *AdminOutput) IsConsumable() bool {
 }
 
 func (o *AdminOutput) FromData(data []byte) error {
+	if err := rlpDecode(data, o); err != nil {
+		return err
+	}
+	return nil
+}
+
+// --------------------------------
+// AllWritersOutput implementation
+//
+// Signals that all users can write to this table
+// --------------------------------
+
+type AllWritersOutput struct {
+	TableName []byte
+}
+
+func (o *AllWritersOutput) Type() OutputType {
+	return OUTPUT_TYPE_ALL_WRITERS
+}
+
+func (o *AllWritersOutput) Data() []byte {
+	return o.TableName
+}
+
+func (o *AllWritersOutput) IsConsumable() bool {
+	return false
+}
+
+func (o *AllWritersOutput) FromData(data []byte) error {
 	o.TableName = data
+	return nil
+}
+
+// --------------------------------
+// WriterOutput implementation
+//
+// Allows a particular user to write to a table
+// --------------------------------
+
+type WriterOutput struct {
+	TableName []byte
+	PubKey    []byte
+}
+
+func (o *WriterOutput) Type() OutputType {
+	return OUTPUT_TYPE_WRITER
+}
+
+func (o *WriterOutput) Data() []byte {
+	// TODO: Log on error here, should never happen
+	data, _ := rlpEncode(o)
+	return data
+}
+
+func (o *WriterOutput) IsConsumable() bool {
+	return false
+}
+
+func (o *WriterOutput) FromData(data []byte) error {
+	if err := rlpDecode(data, o); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -208,6 +273,12 @@ func fromDBOutput(o *meddb.Output) (Output, error) {
 		coreOutput = &AllColsAllowedOutput{}
 	case OUTPUT_TYPE_ALL_ADMINS:
 		coreOutput = &AllAdminsOutput{}
+	case OUTPUT_TYPE_ADMIN:
+		coreOutput = &AdminOutput{}
+	case OUTPUT_TYPE_ALL_WRITERS:
+		coreOutput = &AllWritersOutput{}
+	case OUTPUT_TYPE_WRITER:
+		coreOutput = &WriterOutput{}
 	default:
 		return nil, errors.New(fmt.Sprintf("Invalid output type %d\n", o.Type))
 	}

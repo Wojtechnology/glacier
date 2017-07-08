@@ -11,7 +11,8 @@ import (
 type InputType int
 
 const (
-	INPUT_TYPE_ADMIN InputType = iota // ADMIN = 0 - user can modify table
+	INPUT_TYPE_ADMIN  InputType = iota // ADMIN  = 0
+	INPUT_TYPE_WRITER                  // WRITER = 1
 )
 
 type Input interface {
@@ -58,6 +59,30 @@ func (in *AdminInput) FromData(data []byte) error {
 	return nil
 }
 
+// --------------------------------
+// WriterInput implementation
+//
+// Allows a particular user to write to a table
+// --------------------------------
+
+type WriterInput struct {
+	InputLink
+	Sig []byte
+}
+
+func (in *WriterInput) Type() InputType {
+	return INPUT_TYPE_WRITER
+}
+
+func (in *WriterInput) Data() []byte {
+	return in.Sig
+}
+
+func (in *WriterInput) FromData(data []byte) error {
+	in.Sig = data
+	return nil
+}
+
 // -------
 // Helpers
 // -------
@@ -90,6 +115,8 @@ func fromDBInput(in *meddb.Input) (Input, error) {
 	switch InputType(in.Type) {
 	case INPUT_TYPE_ADMIN:
 		coreInput = &AdminInput{InputLink: InputLink{BytesToHash(in.OutputHash)}}
+	case INPUT_TYPE_WRITER:
+		coreInput = &WriterInput{InputLink: InputLink{BytesToHash(in.OutputHash)}}
 	default:
 		return nil, errors.New(fmt.Sprint("Invalid input type: %d\n", in.Type))
 	}
