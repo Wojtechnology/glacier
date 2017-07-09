@@ -19,6 +19,8 @@ const (
 	OUTPUT_TYPE_ADMIN                              // ADMIN            = 4
 	OUTPUT_TYPE_ALL_WRITERS                        // ALL_WRITERS      = 5
 	OUTPUT_TYPE_WRITER                             // WRITER           = 6
+	OUTPUT_TYPE_ALL_ROW_WRITERS                    // ALL_ROW_WRITERS  = 7
+	OUTPUT_TYPE_ROW_WRITER                         // ROW_WRITER       = 8
 )
 
 type Output interface {
@@ -232,6 +234,71 @@ func (o *WriterOutput) FromData(data []byte) error {
 	return nil
 }
 
+// --------------------------------
+// AllRowWritersOutput implementation
+//
+// Allows any user to write to the particular row
+// --------------------------------
+
+type AllRowWritersOutput struct {
+	TableName []byte
+	RowId     []byte
+}
+
+func (o *AllRowWritersOutput) Type() OutputType {
+	return OUTPUT_TYPE_ALL_ROW_WRITERS
+}
+
+func (o *AllRowWritersOutput) Data() []byte {
+	// TODO: Log on error here, should never happen
+	data, _ := rlpEncode(o)
+	return data
+}
+
+func (o *AllRowWritersOutput) IsConsumable() bool {
+	return false
+}
+
+func (o *AllRowWritersOutput) FromData(data []byte) error {
+	if err := rlpDecode(data, o); err != nil {
+		return err
+	}
+	return nil
+}
+
+// --------------------------------
+// RowWriterOutput implementation
+//
+// Allows any user to write to the particular row
+// --------------------------------
+
+type RowWriterOutput struct {
+	TableName []byte
+	RowId     []byte
+	PubKey    []byte
+}
+
+func (o *RowWriterOutput) Type() OutputType {
+	return OUTPUT_TYPE_ROW_WRITER
+}
+
+func (o *RowWriterOutput) Data() []byte {
+	// TODO: Log on error here, should never happen
+	data, _ := rlpEncode(o)
+	return data
+}
+
+func (o *RowWriterOutput) IsConsumable() bool {
+	return false
+}
+
+func (o *RowWriterOutput) FromData(data []byte) error {
+	if err := rlpDecode(data, o); err != nil {
+		return err
+	}
+	return nil
+}
+
 // -------
 // Helpers
 // -------
@@ -279,6 +346,10 @@ func fromDBOutput(o *meddb.Output) (Output, error) {
 		coreOutput = &AllWritersOutput{}
 	case OUTPUT_TYPE_WRITER:
 		coreOutput = &WriterOutput{}
+	case OUTPUT_TYPE_ALL_ROW_WRITERS:
+		coreOutput = &AllRowWritersOutput{}
+	case OUTPUT_TYPE_ROW_WRITER:
+		coreOutput = &RowWriterOutput{}
 	default:
 		return nil, errors.New(fmt.Sprintf("Invalid output type %d\n", o.Type))
 	}

@@ -11,8 +11,9 @@ import (
 type InputType int
 
 const (
-	INPUT_TYPE_ADMIN  InputType = iota // ADMIN  = 0
-	INPUT_TYPE_WRITER                  // WRITER = 1
+	INPUT_TYPE_ADMIN      InputType = iota // ADMIN      = 0
+	INPUT_TYPE_WRITER                      // WRITER     = 1
+	INPUT_TYPE_ROW_WRITER                  // ROW_WRITER = 2
 )
 
 type Input interface {
@@ -79,6 +80,30 @@ func (in *WriterInput) Data() []byte {
 }
 
 func (in *WriterInput) FromData(data []byte) error {
+	in.Sig = data
+	return nil
+}
+
+// --------------------------------
+// RowWriterInput implementation
+//
+// Allows a particular user to write to a row in a table
+// --------------------------------
+
+type RowWriterInput struct {
+	InputLink
+	Sig []byte
+}
+
+func (in *RowWriterInput) Type() InputType {
+	return INPUT_TYPE_ROW_WRITER
+}
+
+func (in *RowWriterInput) Data() []byte {
+	return in.Sig
+}
+
+func (in *RowWriterInput) FromData(data []byte) error {
 	in.Sig = data
 	return nil
 }

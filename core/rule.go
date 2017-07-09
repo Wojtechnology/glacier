@@ -248,3 +248,64 @@ func (rule *WriterRule) Validate(tx *Transaction, linkedOutputs map[string]Outpu
 
 	return nil
 }
+
+// --------------------------------
+// RowRule implementation
+//
+// Used to check whether user can write to the given row
+// --------------------------------
+
+type RowRule struct{}
+
+func (rule *RowRule) getAllRowWritersOutputHash(tx *Transaction) Hash {
+	return hashOutput(&AllRowWritersOutput{TableName: tx.TableName, RowId: tx.RowId})
+}
+
+func (rule *RowRule) RequiredOutputIds(tx *Transaction) [][]byte {
+	return [][]byte{rule.getAllRowWritersOutputHash(tx).Bytes()}
+}
+
+func (rule *RowRule) Validate(tx *Transaction, linkedOutputs map[string]Output,
+	spentInputs map[string][]Input) error {
+
+	allRowWritersHash := rule.getAllRowWritersOutputHash(tx).String()
+	if _, ok := linkedOutputs[allRowWritersHash]; ok {
+		// All writers can write to the row
+		return nil
+	}
+
+	rowWriterInputs := make([]*RowWriterInput, 0)
+	for _, input := range tx.Inputs {
+		if rowWriterInput, ok := input.(*RowWriterInput); ok {
+			rowWriterInputs = append(rowWriterInputs, rowWriterInput)
+		}
+	}
+
+	if len(rowWriterInputs) != 1 {
+		return errors.New(fmt.Sprintf("Must have exactly 1 row writer input. Have %v\n",
+			len(rowWriterInputs)))
+	}
+
+	rowWriterInput := rowWriterInputs[0]
+	output, outputExists := linkedOutputs[rowWriterInput.OutputHash().String()]
+	if !outputExists {
+		return errors.New(fmt.Sprintf("Output missing for row writer rule: %v\n",
+			rowWriterInput.OutputHash().Bytes()))
+	}
+
+	rowWriterOutput, outputTypeCorrect := output.(*RowWriterOutput)
+	if !outputTypeCorrect {
+		return errors.New(fmt.Sprintf("Invalid output type for row writer rule: %v\n", output))
+	}
+
+	pubKey, err := crypto.RetrievePublicKey(tx.Hash().Bytes(), rowWriterInput.Sig)
+	if err != nil {
+		return err
+	}
+
+	if !bytes.Equal(pubKey, rowWriterOutput.PubKey) {
+		return errors.New("Signature invalid\n")
+	}
+
+	return nil
+}
