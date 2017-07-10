@@ -18,6 +18,7 @@ type Block struct {
 	Transactions []*Transaction // Contains hashes of all contained transactions
 	CreatedAt    *big.Int       // Time at which block was created, will be used to determine order
 	Creator      []byte
+	Sig          []byte
 	Voters       [][]byte
 	State        BlockState
 }
@@ -27,6 +28,7 @@ type Block struct {
 // ---------
 
 type blockBody struct {
+	Creator      []byte
 	Transactions []Hash // Contains hashes of all contained transactions
 	Voters       [][]byte
 }
@@ -37,6 +39,7 @@ func (b *Block) Hash() Hash {
 		txs[i] = tx.Hash()
 	}
 	return rlpHash(&blockBody{
+		Creator:      b.Creator,
 		Transactions: txs,
 		Voters:       b.Voters,
 	})
@@ -62,6 +65,7 @@ func (b *Block) toDBBlock() *meddb.Block {
 		Transactions: txs,
 		CreatedAt:    createdAt,
 		Creator:      b.Creator,
+		Sig:          b.Sig,
 		Voters:       b.Voters,
 		State:        int(b.State),
 	}
@@ -86,6 +90,7 @@ func fromDBBlock(b *meddb.Block) *Block {
 		Transactions: txs,
 		CreatedAt:    createdAt,
 		Creator:      b.Creator,
+		Sig:          b.Sig,
 		Voters:       b.Voters,
 		State:        BlockState(b.State),
 	}

@@ -15,10 +15,12 @@ func TestDBBlockMapper(t *testing.T) {
 		Transactions: []*Transaction{tx},
 		CreatedAt:    big.NewInt(43),
 		Creator:      []byte{44},
+		Sig:          []byte{69},
 		Voters:       [][]byte{[]byte{45}},
 		State:        BLOCK_STATE_ACCEPTED,
 	}
 	hash := rlpHash(&blockBody{
+		Creator:      b.Creator,
 		Transactions: []Hash{tx.Hash()},
 		Voters:       b.Voters,
 	})
@@ -32,6 +34,7 @@ func TestDBBlockMapper(t *testing.T) {
 		}},
 		CreatedAt: big.NewInt(43),
 		Creator:   []byte{44},
+		Sig:       []byte{69},
 		Voters:    [][]byte{[]byte{45}},
 		State:     1,
 	}

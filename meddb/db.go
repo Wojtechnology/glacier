@@ -65,6 +65,7 @@ type Block struct {
 	Transactions []*Transaction
 	CreatedAt    *big.Int
 	Creator      []byte
+	Sig          []byte
 	Voters       [][]byte
 	State        int
 }
@@ -72,6 +73,7 @@ type Block struct {
 type Vote struct {
 	Hash      []byte
 	Voter     []byte
+	Sig       []byte
 	VotedAt   *big.Int
 	PrevBlock []byte
 	NextBlock []byte // Block we are voting on
@@ -163,6 +165,7 @@ func (b *Block) Clone() *Block {
 		Transactions: b.Transactions,
 		CreatedAt:    createdAt,
 		Creator:      b.Creator,
+		Sig:          b.Sig,
 		Voters:       b.Voters,
 		State:        b.State,
 	}
@@ -177,6 +180,7 @@ func (v *Vote) Clone() *Vote {
 	return &Vote{
 		Hash:      v.Hash,
 		Voter:     v.Voter,
+		Sig:       v.Sig,
 		VotedAt:   votedAt,
 		PrevBlock: v.PrevBlock,
 		NextBlock: v.NextBlock,

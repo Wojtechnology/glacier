@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/wojtechnology/glacier/common"
+	"github.com/wojtechnology/glacier/crypto"
 	"github.com/wojtechnology/glacier/meddb"
 )
 
@@ -137,6 +138,8 @@ func TestBuildBlock(t *testing.T) {
 	assert.Nil(t, err)
 
 	me := &Node{PubKey: []byte{69}}
+	me.PrivKey, err = crypto.NewPrivateKey()
+	assert.Nil(t, err)
 	other := &Node{PubKey: []byte{70}}
 	tx := &Transaction{TableName: []byte{1}}
 	err = db.WriteTransaction(tx.toDBTransaction())
@@ -147,9 +150,12 @@ func TestBuildBlock(t *testing.T) {
 	txs := []*Transaction{tx}
 	b, err := bc.BuildBlock(txs)
 	assert.Nil(t, err)
+	sig, err := crypto.Sign(b.Hash().Bytes(), me.PrivKey)
+	assert.Nil(t, err)
 	assert.Equal(t, txs, b.Transactions)
 	assert.Equal(t, me.PubKey, b.Creator)
 	assert.Equal(t, [][]byte{other.PubKey}, b.Voters)
+	assert.Equal(t, sig, b.Sig)
 	assertRecent(t, b.CreatedAt.Int64())
 }
 
@@ -228,15 +234,20 @@ func TestBuildVote(t *testing.T) {
 		prevBlockId = BytesToHash([]byte("prev"))
 		value       = true
 	)
+	me.PrivKey, err = crypto.NewPrivateKey()
+	assert.Nil(t, err)
 
 	bc := NewBlockchain(db, nil, me, nil)
 
 	v, err := bc.BuildVote(blockId, prevBlockId, value)
 	assert.Nil(t, err)
+	sig, err := crypto.Sign(v.Hash().Bytes(), me.PrivKey)
+	assert.Nil(t, err)
 	assert.Equal(t, me.PubKey, v.Voter)
 	assert.Equal(t, blockId, v.NextBlock)
 	assert.Equal(t, prevBlockId, v.PrevBlock)
 	assert.Equal(t, value, v.Value)
+	assert.Equal(t, sig, v.Sig)
 	assertRecent(t, v.VotedAt.Int64())
 }
 

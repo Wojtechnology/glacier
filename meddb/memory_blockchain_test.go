@@ -306,6 +306,7 @@ func getTestBlock() *Block {
 		Transactions: []*Transaction{getTestTransaction()},
 		CreatedAt:    big.NewInt(162),
 		Creator:      []byte{172},
+		Sig:          []byte{173},
 		Voters:       [][]byte{[]byte{182}},
 		State:        1,
 	}
@@ -315,6 +316,7 @@ func getTestVote() *Vote {
 	return &Vote{
 		Hash:      []byte{202},
 		Voter:     []byte{212},
+		Sig:       []byte{213},
 		VotedAt:   big.NewInt(222),
 		PrevBlock: []byte{232},
 		NextBlock: []byte{242},

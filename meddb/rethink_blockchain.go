@@ -57,6 +57,7 @@ type rethinkBlock struct {
 	Transactions []*rethinkTransaction `gorethink:"transactions"`
 	CreatedAt    []byte                `gorethink:"created_at"`
 	Creator      []byte                `gorethink:"creator"`
+	Sig          []byte                `gorethink:"sig"`
 	Voters       [][]byte              `gorethink:"voters"`
 	State        int                   `gorethink:"state"`
 }
@@ -64,6 +65,7 @@ type rethinkBlock struct {
 type rethinkVote struct {
 	Hash      []byte `gorethink:"id"`
 	Voter     []byte `gorethink:"voter"`
+	Sig       []byte `gorethink:"sig"`
 	VotedAt   []byte `gorethink:"voted_at"`
 	PrevBlock []byte `gorethink:"prev_block"`
 	NextBlock []byte `gorethink:"next_block"`
@@ -634,6 +636,7 @@ func newRethinkBlock(b *Block) *rethinkBlock {
 		Transactions: txs,
 		CreatedAt:    createdAt,
 		Creator:      b.Creator,
+		Sig:          b.Sig,
 		Voters:       b.Voters,
 		State:        b.State,
 	}
@@ -658,6 +661,7 @@ func fromRethinkBlock(b *rethinkBlock) *Block {
 		Transactions: txs,
 		CreatedAt:    createdAt,
 		Creator:      b.Creator,
+		Sig:          b.Sig,
 		Voters:       b.Voters,
 		State:        b.State,
 	}
@@ -680,6 +684,7 @@ func newRethinkVote(v *Vote) *rethinkVote {
 	return &rethinkVote{
 		Hash:      v.Hash,
 		Voter:     v.Voter,
+		Sig:       v.Sig,
 		VotedAt:   votedAt,
 		PrevBlock: v.PrevBlock,
 		NextBlock: v.NextBlock,
@@ -696,6 +701,7 @@ func fromRethinkVote(v *rethinkVote) *Vote {
 	return &Vote{
 		Hash:      v.Hash,
 		Voter:     v.Voter,
+		Sig:       v.Sig,
 		VotedAt:   votedAt,
 		PrevBlock: v.PrevBlock,
 		NextBlock: v.NextBlock,

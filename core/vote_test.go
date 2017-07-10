@@ -12,16 +12,23 @@ import (
 func TestDBVoteMapper(t *testing.T) {
 	v := &Vote{
 		Voter:     []byte{23},
+		Sig:       []byte{24},
 		VotedAt:   big.NewInt(33),
 		PrevBlock: BytesToHash([]byte{43}),
 		NextBlock: BytesToHash([]byte{53}),
 		Value:     true,
 	}
-	hash := rlpHash(v)
+	hash := rlpHash(&voteBody{
+		Voter:     v.Voter,
+		PrevBlock: v.PrevBlock,
+		NextBlock: v.NextBlock,
+		Value:     v.Value,
+	})
 
 	expected := &meddb.Vote{
 		Hash:      hash.Bytes(),
 		Voter:     []byte{23},
+		Sig:       []byte{24},
 		VotedAt:   big.NewInt(33),
 		PrevBlock: BytesToHash([]byte{43}).Bytes(), // Pads with zeros
 		NextBlock: BytesToHash([]byte{53}).Bytes(), // Pads with zeros
@@ -39,7 +46,10 @@ func TestDBVoteMapperEmpty(t *testing.T) {
 		PrevBlock: BytesToHash([]byte{43}), // This should never be empty
 		NextBlock: BytesToHash([]byte{53}), // This should never be empty
 	}
-	hash := rlpHash(v)
+	hash := rlpHash(&voteBody{
+		PrevBlock: v.PrevBlock,
+		NextBlock: v.NextBlock,
+	})
 
 	expected := &meddb.Vote{
 		Hash:      hash.Bytes(),

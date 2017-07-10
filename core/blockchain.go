@@ -5,6 +5,7 @@ import (
 	"math/rand"
 
 	"github.com/wojtechnology/glacier/common"
+	"github.com/wojtechnology/glacier/crypto"
 	"github.com/wojtechnology/glacier/meddb"
 )
 
@@ -179,7 +180,13 @@ func (bc *Blockchain) BuildBlock(txs []*Transaction) (*Block, error) {
 		Creator:      bc.me.PubKey,
 		Voters:       voters,
 	}
-	// TODO: Sign block
+
+	// Sign block
+	var err error
+	b.Sig, err = crypto.Sign(b.Hash().Bytes(), bc.me.PrivKey)
+	if err != nil {
+		return nil, err
+	}
 
 	return b, nil
 }
@@ -223,7 +230,13 @@ func (bc *Blockchain) BuildVote(blockId, prevBlockId Hash, value bool) (*Vote, e
 		NextBlock: blockId,
 		Value:     value,
 	}
-	// TODO: Sign vote
+
+	// Sign vote
+	var err error
+	v.Sig, err = crypto.Sign(v.Hash().Bytes(), bc.me.PrivKey)
+	if err != nil {
+		return nil, err
+	}
 
 	return v, nil
 }

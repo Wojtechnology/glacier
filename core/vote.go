@@ -8,6 +8,7 @@ import (
 
 type Vote struct {
 	Voter     []byte
+	Sig       []byte
 	VotedAt   *big.Int
 	PrevBlock Hash
 	NextBlock Hash // Block we are voting on
@@ -18,9 +19,20 @@ type Vote struct {
 // Vote API
 // --------
 
+type voteBody struct {
+	Voter     []byte
+	PrevBlock Hash
+	NextBlock Hash
+	Value     bool
+}
+
 func (v *Vote) Hash() Hash {
-	// TODO: Think about this, maybe we want to hash a subset
-	return rlpHash(v)
+	return rlpHash(&voteBody{
+		Voter:     v.Voter,
+		PrevBlock: v.PrevBlock,
+		NextBlock: v.NextBlock,
+		Value:     v.Value,
+	})
 }
 
 func (v *Vote) toDBVote() *meddb.Vote {
@@ -32,6 +44,7 @@ func (v *Vote) toDBVote() *meddb.Vote {
 	return &meddb.Vote{
 		Hash:      v.Hash().Bytes(),
 		Voter:     v.Voter,
+		Sig:       v.Sig,
 		VotedAt:   votedAt,
 		PrevBlock: v.PrevBlock.Bytes(),
 		NextBlock: v.NextBlock.Bytes(),
@@ -47,6 +60,7 @@ func fromDBVote(v *meddb.Vote) *Vote {
 
 	return &Vote{
 		Voter:     v.Voter,
+		Sig:       v.Sig,
 		VotedAt:   votedAt,
 		PrevBlock: BytesToHash(v.PrevBlock),
 		NextBlock: BytesToHash(v.NextBlock),
