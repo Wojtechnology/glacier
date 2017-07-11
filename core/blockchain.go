@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"math/big"
 	"math/rand"
 
@@ -189,6 +190,36 @@ func (bc *Blockchain) BuildBlock(txs []*Transaction) (*Block, error) {
 	}
 
 	return b, nil
+}
+
+// Validates block.
+// Checks whether the signature of the block is valid.
+// Checks whether the transactions within the block are valid.
+func (bc *Blockchain) ValidateBlock(b *Block) error {
+	// Check whether signature is valid
+	pubKey, err := crypto.RetrievePublicKey(b.Hash().Bytes(), b.Sig)
+	if err != nil {
+		return err
+	}
+
+	if !bytes.Equal(pubKey, b.Creator) {
+		return &BlockSignatureInvalidError{BlockId: b.Hash()}
+	}
+
+	// Check whether transactions are valid
+	errs := make([]error, 0)
+	for _, tx := range b.Transactions {
+		err := bc.ValidateTransaction(tx)
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	if len(errs) > 0 {
+		return &TransactionErrors{BlockId: b.Hash(), Errors: errs}
+	}
+
+	return nil
 }
 
 // Writes block to block table.

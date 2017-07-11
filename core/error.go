@@ -25,3 +25,21 @@ type RuleErrors struct {
 func (e *RuleErrors) Error() string {
 	return fmt.Sprintf("Some errors occured when validating transaction: %v\n", e.Errors)
 }
+
+type TransactionErrors struct {
+	BlockId Hash
+	Errors  []error
+}
+
+func (e *TransactionErrors) Error() string {
+	return fmt.Sprintf("Some errors occured when validating transactions in the block %v: %v\n",
+		e.BlockId, e.Errors)
+}
+
+type BlockSignatureInvalidError struct {
+	BlockId Hash
+}
+
+func (e *BlockSignatureInvalidError) Error() string {
+	return fmt.Sprintf("Block signature invalid for block with id: %v", e.BlockId)
+}
