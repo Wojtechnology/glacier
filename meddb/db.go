@@ -34,6 +34,9 @@ type BlockchainDB interface {
 	// Returns k most recent votes for given public key from votes table sorted by decreasing
 	// VotedAt timestamp.
 	GetRecentVotes([]byte, int) ([]*Vote, error)
+
+	// Returns changefeed for all transactions assigned to the given public key
+	GetAssignedTransactionChangefeed([]byte) (TransactionChangefeed, error)
 }
 
 type Transaction struct {
@@ -91,6 +94,41 @@ type InputRes struct {
 	Block *Block
 	Input *Input
 }
+
+// ----------------
+// Changefeed stuff
+// ----------------
+
+type BlockChangefeedRes struct {
+	OldVal *Block
+	NewVal *Block
+}
+
+type TransactionChangefeedRes struct {
+	OldVal *Transaction
+	NewVal *Transaction
+}
+
+type VoteChangefeedRes struct {
+	OldVal *Vote
+	NewVal *Vote
+}
+
+type BlockChangefeed interface {
+	Next(*BlockChangefeedRes) bool
+}
+
+type TransactionChangefeed interface {
+	Next(*TransactionChangefeedRes) bool
+}
+
+type VoteChangefeed interface {
+	Next(*VoteChangefeedRes) bool
+}
+
+// -------
+// Helpers
+// -------
 
 func (tx *Transaction) Clone() *Transaction {
 	var (

@@ -160,6 +160,15 @@ func (bc *Blockchain) DeleteTransactions(txs []*Transaction) error {
 	return bc.db.DeleteTransactions(dbTxs)
 }
 
+// Returns meddb changefeed cursor for transactions assigned to this node.
+func (bc *Blockchain) GetMyTransactionChangefeed() (*TransactionChangeCursor, error) {
+	changefeed, err := bc.db.GetAssignedTransactionChangefeed(bc.me.PubKey)
+	if err != nil {
+		return nil, err
+	}
+	return &TransactionChangeCursor{changefeed: changefeed}, nil
+}
+
 // Builds block from given transactions.
 // DOES NOT VALIDATE TRANSACTIONS. That must be done before.
 func (bc *Blockchain) BuildBlock(txs []*Transaction) (*Block, error) {

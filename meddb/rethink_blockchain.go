@@ -446,6 +446,53 @@ func (db *RethinkBlockchainDB) GetRecentVotes(pubKey []byte, limit int) ([]*Vote
 	return fromRethinkVotes(rows), nil
 }
 
+// ----------------
+// Changefeed stuff
+// ----------------
+
+type rethinkTransactionChangefeedRes struct {
+	OldVal *rethinkTransaction `gorethink:"old_val"`
+	NewVal *rethinkTransaction `gorethink:"new_val"`
+}
+
+type RethinkTransactionChangefeed struct {
+	cursor *r.Cursor
+}
+
+func (cf *RethinkTransactionChangefeed) Next(res *TransactionChangefeedRes) bool {
+	var rethinkRes rethinkTransactionChangefeedRes
+
+	changed := cf.cursor.Next(&rethinkRes)
+	if changed {
+		if rethinkRes.NewVal != nil {
+			res.NewVal = fromRethinkTransaction(rethinkRes.NewVal)
+		} else {
+			res.NewVal = nil
+		}
+		if rethinkRes.OldVal != nil {
+			res.OldVal = fromRethinkTransaction(rethinkRes.OldVal)
+		} else {
+			res.OldVal = nil
+		}
+	}
+
+	return changed
+}
+
+func (db *RethinkBlockchainDB) GetAssignedTransactionChangefeed(
+	pubKey []byte) (TransactionChangefeed, error) {
+
+	res, err := db.backlogTable().Filter(
+		r.Row.Field("assigned_to").Eq(pubKey),
+	).Changes().Run(db.session)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &RethinkTransactionChangefeed{cursor: res}, nil
+}
+
 // -------
 // Helpers
 // -------

@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/wojtechnology/glacier/core"
+	"github.com/wojtechnology/glacier/crypto"
 	"github.com/wojtechnology/glacier/loop"
 	"github.com/wojtechnology/glacier/meddb"
 )
@@ -22,11 +23,16 @@ func initBlockchain() (*core.Blockchain, error) {
 		return nil, err
 	}
 
+	privKey, err := crypto.NewPrivateKey()
+	if err != nil {
+		return nil, err
+	}
+
 	bc := core.NewBlockchain(
 		db,
 		bt,
-		&core.Node{PubKey: []byte{69}},
-		[]*core.Node{&core.Node{[]byte{69}}},
+		&core.Node{PubKey: []byte{69}, PrivKey: privKey},
+		[]*core.Node{&core.Node{PubKey: []byte{69}}},
 	)
 	return bc, nil
 }

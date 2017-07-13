@@ -239,3 +239,9 @@ func (db *MemoryBlockchainDB) GetRecentVotes(pubKey []byte, limit int) ([]*Vote,
 	}
 	return candidates, nil
 }
+
+func (db *MemoryBlockchainDB) GetAssignedTransactionChangefeed(
+	pubKey []byte) (TransactionChangefeed, error) {
+
+	return nil, errors.New("Changefeeds not supported by MemoryBlockchainDB")
+}

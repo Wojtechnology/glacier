@@ -1,6 +1,8 @@
 package loop
 
 import (
+	"errors"
+	"sync"
 	"time"
 
 	"github.com/wojtechnology/glacier/common"
@@ -9,7 +11,7 @@ import (
 
 // TODO: This should be in config
 const (
-	blockLoopWaitMS      = 1000
+	blockLoopWaitMS      = 1000 // Wait time between polling for stale transactions
 	blockMinTransactions = 100
 	blockLongestWaitMS   = 5000
 )
@@ -18,26 +20,93 @@ const (
 // Do this when we use rethink changefeeds to trigger a loop
 type blockLoopState struct {
 	lastBlockMS int64
+	txsMap      map[string]*core.Transaction
+	txsMapLock  sync.RWMutex
+}
+
+func newBlockLoopState() *blockLoopState {
+	return &blockLoopState{
+		lastBlockMS: common.Now(),
+		txsMap:      make(map[string]*core.Transaction),
+	}
+}
+
+// Assumes all transactions in txs are distinct
+func (state *blockLoopState) addTransactions(txs []*core.Transaction) {
+	state.txsMapLock.Lock()
+	defer state.txsMapLock.Unlock()
+
+	for _, tx := range txs {
+		state.txsMap[tx.Hash().String()] = tx
+	}
+}
+
+// Returns transactions
+func (state *blockLoopState) getTransactions() []*core.Transaction {
+	state.txsMapLock.Lock()
+	defer state.txsMapLock.Unlock()
+
+	txs := make([]*core.Transaction, len(state.txsMap))
+	i := 0
+	for _, tx := range state.txsMap {
+		txs[i] = tx
+		i++
+	}
+
+	return txs
 }
 
 func AddBlockLoop(bc *core.Blockchain, errChannel chan<- error) {
-	s := &blockLoopState{lastBlockMS: common.Now()}
-	for true {
-		err := addBlock(bc, s)
+	s := newBlockLoopState()
+
+	cursor, err := bc.GetMyTransactionChangefeed()
+	if err != nil {
+		errChannel <- err
+	}
+
+	txChannel := make(chan bool)
+
+	go func(bc *core.Blockchain, s *blockLoopState, txChannel <-chan bool, errChannel chan<- error) {
+		// Get transactions that were assigned previously.
+		txs, err := bc.GetMyTransactions()
 		if err != nil {
 			errChannel <- err
 		}
-		// TODO: Adjust for time spent
-		timeChannel := time.After(time.Millisecond * blockLoopWaitMS)
-		<-timeChannel
+		s.addTransactions(txs)
+
+		tickerChannel := getTickerChannel()
+		for {
+			var err error
+			select {
+			case <-tickerChannel:
+				err = addBlock(bc, s)
+			case <-txChannel:
+				err = addBlock(bc, s)
+			}
+			if err != nil {
+				errChannel <- err
+			}
+		}
+	}(bc, s, txChannel, errChannel)
+
+	var res core.TransactionChange
+	for cursor.Next(&res) {
+		if res.NewTransaction != nil {
+			// Update or insert (not delete)
+			s.addTransactions([]*core.Transaction{res.NewTransaction})
+			txChannel <- true
+		}
 	}
+
+	errChannel <- errors.New("For some reason the transaction changefeed stopped...\n")
+}
+
+func getTickerChannel() <-chan time.Time {
+	return time.NewTicker(time.Millisecond * blockLoopWaitMS).C
 }
 
 func addBlock(bc *core.Blockchain, s *blockLoopState) error {
-	txs, err := bc.GetMyTransactions()
-	if err != nil {
-		return err
-	}
+	txs := s.getTransactions()
 
 	nowMS := common.Now()
 	timePassed := time.Unix(0, nowMS-s.lastBlockMS)
