@@ -2,6 +2,7 @@ package core
 
 import (
 	"bytes"
+	"errors"
 	"math/big"
 	"math/rand"
 
@@ -72,16 +73,21 @@ func (bc *Blockchain) ValidateTransaction(tx *Transaction) error {
 		linkedOutputIds[i] = input.OutputHash().Bytes()
 	}
 
+	requiredOutputIds := make([][]byte, len(linkedOutputIds))
+	for i, outputId := range linkedOutputIds {
+		requiredOutputIds[i] = outputId
+	}
+
 	ruleset, err := tx.GetRuleset()
 	if err != nil {
 		return err
 	}
 	for _, rule := range ruleset {
-		linkedOutputIds = append(linkedOutputIds, rule.RequiredOutputIds(tx)...)
+		requiredOutputIds = append(requiredOutputIds, rule.RequiredOutputIds(tx)...)
 	}
 
 	// Gets outputs that are linked to by an input in the transaction.
-	linkedOutputRes, err := bc.db.GetOutputs(linkedOutputIds)
+	requiredOutputRes, err := bc.db.GetOutputs(requiredOutputIds)
 	if err != nil {
 		return err
 	}
@@ -89,7 +95,7 @@ func (bc *Blockchain) ValidateTransaction(tx *Transaction) error {
 	acceptedOutputs := make(map[string]Output)
 	undecidedOutputs := make(map[string]Output)
 
-	for _, outputRes := range linkedOutputRes {
+	for _, outputRes := range requiredOutputRes {
 		output, err := fromDBOutput(outputRes.Output)
 		if err != nil {
 			return err
@@ -174,7 +180,7 @@ func (bc *Blockchain) GetMyTransactionChangefeed() (*TransactionChangeCursor, er
 func (bc *Blockchain) BuildBlock(txs []*Transaction) (*Block, error) {
 	if len(txs) == 0 {
 		// TODO: Raise error here, should never be called with zero transactions
-		return nil, nil
+		return nil, errors.New("Cannot build block with zero transactions")
 	}
 
 	// TODO: Lock
