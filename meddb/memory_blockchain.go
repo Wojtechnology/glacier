@@ -245,3 +245,7 @@ func (db *MemoryBlockchainDB) GetAssignedTransactionChangefeed(
 
 	return nil, errors.New("Changefeeds not supported by MemoryBlockchainDB")
 }
+
+func (db *MemoryBlockchainDB) GetBlockChangefeed() (BlockChangefeed, error) {
+	return nil, errors.New("Changefeeds not supported by MemoryBlockchainDB")
+}

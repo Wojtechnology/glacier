@@ -16,8 +16,7 @@ const (
 	blockLongestWaitMS   = 5000
 )
 
-// TODO: Make better abstraction for loops (sort of like pipeline in BigChainDB)
-// Do this when we use rethink changefeeds to trigger a loop
+// TODO: Make better abstraction for loops sort of like map/reduce
 type blockLoopState struct {
 	lastBlockMS int64
 	txsMap      map[string]*core.Transaction

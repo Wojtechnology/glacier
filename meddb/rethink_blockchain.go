@@ -485,12 +485,49 @@ func (db *RethinkBlockchainDB) GetAssignedTransactionChangefeed(
 	res, err := db.backlogTable().Filter(
 		r.Row.Field("assigned_to").Eq(pubKey),
 	).Changes().Run(db.session)
-
 	if err != nil {
 		return nil, err
 	}
 
 	return &RethinkTransactionChangefeed{cursor: res}, nil
+}
+
+type rethinkBlockChangefeedRes struct {
+	OldVal *rethinkBlock `gorethink:"old_val"`
+	NewVal *rethinkBlock `gorethink:"new_val"`
+}
+
+type RethinkBlockChangefeed struct {
+	cursor *r.Cursor
+}
+
+func (cf *RethinkBlockChangefeed) Next(res *BlockChangefeedRes) bool {
+	var rethinkRes rethinkBlockChangefeedRes
+
+	changed := cf.cursor.Next(&rethinkRes)
+	if changed {
+		if rethinkRes.NewVal != nil {
+			res.NewVal = fromRethinkBlock(rethinkRes.NewVal)
+		} else {
+			res.NewVal = nil
+		}
+		if rethinkRes.OldVal != nil {
+			res.OldVal = fromRethinkBlock(rethinkRes.OldVal)
+		} else {
+			res.OldVal = nil
+		}
+	}
+
+	return changed
+}
+
+func (db *RethinkBlockchainDB) GetBlockChangefeed() (BlockChangefeed, error) {
+	res, err := db.blockTable().Changes().Run(db.session)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RethinkBlockChangefeed{cursor: res}, nil
 }
 
 // -------

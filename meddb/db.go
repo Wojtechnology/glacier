@@ -37,6 +37,8 @@ type BlockchainDB interface {
 
 	// Returns changefeed for all transactions assigned to the given public key
 	GetAssignedTransactionChangefeed([]byte) (TransactionChangefeed, error)
+	// Returns changefeed for all blocks
+	GetBlockChangefeed() (BlockChangefeed, error)
 }
 
 type Transaction struct {

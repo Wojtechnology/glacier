@@ -267,6 +267,14 @@ func (bc *Blockchain) GetOldestBlocks(after int64, limit int) ([]*Block, error) 
 	return fromDBBlocks(dbBs), nil
 }
 
+func (bc *Blockchain) GetBlockChangefeed() (*BlockChangeCursor, error) {
+	changefeed, err := bc.db.GetBlockChangefeed()
+	if err != nil {
+		return nil, err
+	}
+	return &BlockChangeCursor{changefeed: changefeed}, nil
+}
+
 // Builds and signs vote for particular block, given previous block.
 func (bc *Blockchain) BuildVote(blockId, prevBlockId Hash, value bool) (*Vote, error) {
 	v := &Vote{

@@ -35,3 +35,33 @@ func (cursor *TransactionChangeCursor) Next(change *TransactionChange) bool {
 
 	return changed
 }
+
+type BlockChange struct {
+	NewBlock *Block
+	OldBlock *Block
+}
+
+// Wrapper around a meddb block that maps meddb blocks to core blocks.
+type BlockChangeCursor struct {
+	changefeed meddb.BlockChangefeed
+}
+
+func (cursor *BlockChangeCursor) Next(change *BlockChange) bool {
+	var res meddb.BlockChangefeedRes
+
+	changed := cursor.changefeed.Next(&res)
+	if changed {
+		if res.NewVal != nil {
+			change.NewBlock = fromDBBlock(res.NewVal)
+		} else {
+			change.NewBlock = nil
+		}
+		if res.OldVal != nil {
+			change.OldBlock = fromDBBlock(res.OldVal)
+		} else {
+			change.OldBlock = nil
+		}
+	}
+
+	return changed
+}
