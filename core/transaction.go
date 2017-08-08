@@ -44,6 +44,7 @@ var rulesets = map[TransactionType][]Rule{
 	TRANSACTION_TYPE_PUT_CELLS: []Rule{
 		&TableExistsRule{},
 		&ColsAllowedRule{},
+		&WriterRule{},
 		&RowRule{},
 	},
 }
