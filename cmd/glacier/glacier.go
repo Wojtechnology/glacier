@@ -3,8 +3,10 @@ package main
 import (
 	"github.com/wojtechnology/glacier/core"
 	"github.com/wojtechnology/glacier/crypto"
+	"github.com/wojtechnology/glacier/logging"
 	"github.com/wojtechnology/glacier/loop"
 	"github.com/wojtechnology/glacier/meddb"
+	"os"
 )
 
 func initBlockchain() (*core.Blockchain, error) {
@@ -42,6 +44,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	logging.InitLoggers(os.Stdout, os.Stderr)
+	logging.Info("Glacier is now running!")
 
 	errChannel := make(chan error)
 	go loop.IOLoop(bc, errChannel)
