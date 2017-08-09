@@ -336,3 +336,27 @@ func (rule *ValidOutputTypesRule) Validate(tx *Transaction, linkedOutputs map[st
 
 	return nil
 }
+
+// --------------------------------
+// HasTableExistsRule implementation
+//
+// Used to check whether a transaction has a TABLE_EXISTS output
+// --------------------------------
+
+type HasTableExistsRule struct{}
+
+func (rule *HasTableExistsRule) RequiredOutputIds(tx *Transaction) [][]byte {
+	return [][]byte{}
+}
+
+func (rule *HasTableExistsRule) Validate(tx *Transaction, linkedOutputs map[string]Output,
+	spentInputs map[string][]Input) error {
+
+	for _, output := range tx.Outputs {
+		if output.Type() == OUTPUT_TYPE_TABLE_EXISTS {
+			return nil
+		}
+	}
+
+	return errors.New(fmt.Sprintf("Transaction doesn't have a TABLE_EXISTS output type"))
+}

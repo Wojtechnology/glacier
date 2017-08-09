@@ -41,3 +41,27 @@ func TestValidOutputTypesRuleInvalid(t *testing.T) {
 
 	assert.IsType(t, errors.New(""), rule.Validate(tx, nil, nil))
 }
+
+func TestHasTableExistsRule(t *testing.T) {
+	tx := &Transaction{
+		Outputs: []Output{
+			&TableExistsOutput{},
+		},
+	}
+
+	rule := &HasTableExistsRule{}
+
+	assert.Nil(t, rule.Validate(tx, nil, nil))
+}
+
+func TestHasTableExistsRuleInvalid(t *testing.T) {
+	tx := &Transaction{
+		Outputs: []Output{
+			&ColAllowedOutput{},
+		},
+	}
+
+	rule := &HasTableExistsRule{}
+
+	assert.IsType(t, errors.New(""), rule.Validate(tx, nil, nil))
+}
