@@ -28,3 +28,6 @@ _testmain.go
 
 # Test output
 coverage.out
+
+# RethinkDB data
+rethinkdb_data/*
