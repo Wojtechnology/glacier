@@ -1,12 +1,13 @@
 package main
 
 import (
+	"os"
+
 	"github.com/wojtechnology/glacier/core"
 	"github.com/wojtechnology/glacier/crypto"
 	"github.com/wojtechnology/glacier/logging"
 	"github.com/wojtechnology/glacier/loop"
 	"github.com/wojtechnology/glacier/meddb"
-	"os"
 )
 
 func initBlockchain() (*core.Blockchain, error) {
