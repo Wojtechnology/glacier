@@ -36,16 +36,37 @@ type Transaction struct {
 var rulesets = map[TransactionType][]Rule{
 	TRANSACTION_TYPE_CREATE_TABLE: []Rule{
 		&TableMissingRule{},
+		&ValidOutputTypesRule{validTypes: map[OutputType]bool{
+			OUTPUT_TYPE_TABLE_EXISTS:     true,
+			OUTPUT_TYPE_COL_ALLOWED:      true,
+			OUTPUT_TYPE_ALL_COLS_ALLOWED: true,
+			OUTPUT_TYPE_ALL_ADMINS:       true,
+			OUTPUT_TYPE_ADMIN:            true,
+			OUTPUT_TYPE_ALL_WRITERS:      true,
+			OUTPUT_TYPE_WRITER:           true,
+		}},
 	},
 	TRANSACTION_TYPE_UPDATE_TABLE: []Rule{
 		&TableExistsRule{},
 		&AdminRule{},
+		&ValidOutputTypesRule{validTypes: map[OutputType]bool{
+			OUTPUT_TYPE_COL_ALLOWED:      true,
+			OUTPUT_TYPE_ALL_COLS_ALLOWED: true,
+			OUTPUT_TYPE_ALL_ADMINS:       true,
+			OUTPUT_TYPE_ADMIN:            true,
+			OUTPUT_TYPE_ALL_WRITERS:      true,
+			OUTPUT_TYPE_WRITER:           true,
+		}},
 	},
 	TRANSACTION_TYPE_PUT_CELLS: []Rule{
 		&TableExistsRule{},
 		&ColsAllowedRule{},
 		&WriterRule{},
 		&RowRule{},
+		&ValidOutputTypesRule{validTypes: map[OutputType]bool{
+			OUTPUT_TYPE_ALL_ROW_WRITERS: true,
+			OUTPUT_TYPE_ROW_WRITER:      true,
+		}},
 	},
 }
 

@@ -309,3 +309,30 @@ func (rule *RowRule) Validate(tx *Transaction, linkedOutputs map[string]Output,
 
 	return nil
 }
+
+// --------------------------------
+// ValidOutputTypesRule implementation
+//
+// Used to check whether transaction only has certain output types
+// --------------------------------
+
+type ValidOutputTypesRule struct {
+	validTypes map[OutputType]bool // map is used as a set here
+}
+
+func (rule *ValidOutputTypesRule) RequiredOutputIds(tx *Transaction) [][]byte {
+	return [][]byte{}
+}
+
+func (rule *ValidOutputTypesRule) Validate(tx *Transaction, linkedOutputs map[string]Output,
+	spentInputs map[string][]Input) error {
+
+	for _, output := range tx.Outputs {
+		if _, ok := rule.validTypes[output.Type()]; !ok {
+			return errors.New(fmt.Sprintf("Invalid output type: %d\nExpected: %v\n",
+				output.Type(), rule.validTypes))
+		}
+	}
+
+	return nil
+}
