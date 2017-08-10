@@ -327,11 +327,11 @@ func toDBOutput(o Output) *meddb.Output {
 	}
 }
 
-// Mapper from db Output object to the appropriate core Output implementation.
-func fromDBOutput(o *meddb.Output) (Output, error) {
+// Factory method for creating outputs
+func NewOutput(outputType int, data []byte) (Output, error) {
 	var coreOutput Output
 
-	switch OutputType(o.Type) {
+	switch OutputType(outputType) {
 	case OUTPUT_TYPE_TABLE_EXISTS:
 		coreOutput = &TableExistsOutput{}
 	case OUTPUT_TYPE_COL_ALLOWED:
@@ -351,10 +351,10 @@ func fromDBOutput(o *meddb.Output) (Output, error) {
 	case OUTPUT_TYPE_ROW_WRITER:
 		coreOutput = &RowWriterOutput{}
 	default:
-		return nil, errors.New(fmt.Sprintf("Invalid output type %d\n", o.Type))
+		return nil, errors.New(fmt.Sprintf("Invalid output type %d\n", outputType))
 	}
 
-	if err := coreOutput.FromData(o.Data); err != nil {
+	if err := coreOutput.FromData(data); err != nil {
 		return nil, err
 	}
 

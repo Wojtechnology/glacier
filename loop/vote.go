@@ -1,6 +1,9 @@
 package loop
 
-import "github.com/wojtechnology/glacier/core"
+import (
+	"github.com/wojtechnology/glacier/core"
+	"github.com/wojtechnology/glacier/logging"
+)
 
 const voteBlockBatchSize = 10
 
@@ -48,11 +51,10 @@ func voteOnBlock(bc *core.Blockchain, s *voteLoopState, b *core.Block) error {
 	valid := true
 	err := bc.ValidateBlock(b)
 	if err != nil {
+		logging.Error(err.Error())
 		if _, ok := err.(*core.BlockSignatureInvalidError); ok {
-			// TODO: Log error
 			valid = false
 		} else if _, ok := err.(*core.TransactionErrors); ok {
-			// TODO: Log error
 			valid = false
 		} else {
 			return err

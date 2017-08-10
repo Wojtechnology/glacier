@@ -134,19 +134,21 @@ func toDBInput(in Input) *meddb.Input {
 	}
 }
 
-func fromDBInput(in *meddb.Input) (Input, error) {
+func NewInput(inputType int, outputHash, data []byte) (Input, error) {
 	var coreInput Input
 
-	switch InputType(in.Type) {
+	switch InputType(inputType) {
 	case INPUT_TYPE_ADMIN:
-		coreInput = &AdminInput{InputLink: InputLink{BytesToHash(in.OutputHash)}}
+		coreInput = &AdminInput{InputLink: InputLink{BytesToHash(outputHash)}}
 	case INPUT_TYPE_WRITER:
-		coreInput = &WriterInput{InputLink: InputLink{BytesToHash(in.OutputHash)}}
+		coreInput = &WriterInput{InputLink: InputLink{BytesToHash(outputHash)}}
+	case INPUT_TYPE_ROW_WRITER:
+		coreInput = &RowWriterInput{InputLink: InputLink{BytesToHash(outputHash)}}
 	default:
-		return nil, errors.New(fmt.Sprint("Invalid input type: %d\n", in.Type))
+		return nil, errors.New(fmt.Sprint("Invalid input type: %d\n", inputType))
 	}
 
-	if err := coreInput.FromData(in.Data); err != nil {
+	if err := coreInput.FromData(data); err != nil {
 		return nil, err
 	}
 

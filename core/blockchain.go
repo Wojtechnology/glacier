@@ -96,7 +96,8 @@ func (bc *Blockchain) ValidateTransaction(tx *Transaction) error {
 	undecidedOutputs := make(map[string]Output)
 
 	for _, outputRes := range requiredOutputRes {
-		output, err := fromDBOutput(outputRes.Output)
+		dbOutput := outputRes.Output
+		output, err := NewOutput(dbOutput.Type, dbOutput.Data)
 		if err != nil {
 			return err
 		}
@@ -141,7 +142,8 @@ func (bc *Blockchain) ValidateTransaction(tx *Transaction) error {
 	spentInputs := make(map[string][]Input)
 	for _, inputRes := range spentInputRes {
 		if BlockState(inputRes.Block.State) != BLOCK_STATE_REJECTED {
-			input, err := fromDBInput(inputRes.Input)
+			dbInput := inputRes.Input
+			input, err := NewInput(dbInput.Type, dbInput.OutputHash, dbInput.Data)
 			if err != nil {
 				return err
 			}

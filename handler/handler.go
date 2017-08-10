@@ -23,18 +23,31 @@ func SetupRoutes() {
 // Handlers
 // --------
 
-type cell struct {
+type Cell struct {
 	Data  string   `json:"data"`
 	VerId *big.Int `json:"ver_id"`
 }
 
-type transactionRequest struct {
+type Output struct {
+	Type int    `json:"type"`
+	Data string `json:"data"`
+}
+
+type Input struct {
+	Type       int    `json:"type"`
+	OutputHash string `json:"output_hash"`
+	Data       string `json:"data"`
+}
+
+type TransactionRequest struct {
 	TableName string                      `json:"table_name"`
 	RowId     string                      `json:"row_id"`
 	Cols      map[string]*json.RawMessage `json:"cols"`
+	Inputs    []*json.RawMessage          `json:"inputs"`
+	Outputs   []*json.RawMessage          `json:"outputs"`
 }
 
-func (c *cell) toCoreCell() *core.Cell {
+func (c *Cell) toCoreCell() *core.Cell {
 	var verId *big.Int = nil
 	if c.VerId != nil {
 		verId = big.NewInt(c.VerId.Int64())
@@ -45,17 +58,16 @@ func (c *cell) toCoreCell() *core.Cell {
 	}
 }
 
-func (tr *transactionRequest) toCoreTransaction() (*core.Transaction, error) {
+func (tr *TransactionRequest) toCoreTransaction() (*core.Transaction, error) {
 	var cols map[string]*core.Cell = nil
 	if tr.Cols != nil {
 		cols = make(map[string]*core.Cell)
 		for colId, rawCell := range tr.Cols {
-			var c *cell
+			var c *Cell
 			if err := json.Unmarshal(*rawCell, &c); err != nil {
 				return nil, err
 			}
 			cols[colId] = c.toCoreCell()
-
 		}
 	}
 
@@ -75,7 +87,7 @@ func handleTransaction(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case "POST":
-		var tr transactionRequest
+		var tr TransactionRequest
 		defer r.Body.Close()
 		if err := jsonDecode(r, &tr); err != nil {
 			w.WriteHeader(400)

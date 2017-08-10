@@ -233,7 +233,7 @@ func fromDBTransaction(tx *meddb.Transaction) *Transaction {
 		outputs = make([]Output, len(tx.Outputs))
 		for i, output := range tx.Outputs {
 			// TODO: Log when error occurs, since this should not be able to error
-			outputs[i], _ = fromDBOutput(output)
+			outputs[i], _ = NewOutput(output.Type, output.Data)
 		}
 	}
 
@@ -241,7 +241,7 @@ func fromDBTransaction(tx *meddb.Transaction) *Transaction {
 		inputs = make([]Input, len(tx.Inputs))
 		for i, input := range tx.Inputs {
 			// TODO: Log when error occurs, since this should not be able to error
-			inputs[i], _ = fromDBInput(input)
+			inputs[i], _ = NewInput(input.Type, input.OutputHash, input.Data)
 		}
 	}
 

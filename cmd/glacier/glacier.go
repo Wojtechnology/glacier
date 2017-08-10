@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"io/ioutil"
 	"os"
 
 	"github.com/wojtechnology/glacier/core"
@@ -10,7 +12,7 @@ import (
 	"github.com/wojtechnology/glacier/meddb"
 )
 
-func initBlockchain() (*core.Blockchain, error) {
+func initBlockchain(me *core.Node) (*core.Blockchain, error) {
 	addresses := []string{"localhost"}
 	database := "prod"
 
@@ -26,22 +28,33 @@ func initBlockchain() (*core.Blockchain, error) {
 		return nil, err
 	}
 
-	privKey, err := crypto.NewPrivateKey()
-	if err != nil {
-		return nil, err
-	}
-
 	bc := core.NewBlockchain(
 		db,
 		bt,
-		&core.Node{PubKey: []byte{69}, PrivKey: privKey},
-		[]*core.Node{&core.Node{PubKey: []byte{69}}},
+		me,
+		[]*core.Node{me},
 	)
 	return bc, nil
 }
 
+func nodeFromFile(path string) *core.Node {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		fmt.Printf("Error when reading private key: %s\n", err.Error())
+		os.Exit(1)
+	}
+
+	return core.NewNode(crypto.ParsePrivateKey(data))
+}
+
 func main() {
-	bc, err := initBlockchain()
+	if len(os.Args) < 2 {
+		fmt.Println("usage: glacier <priv_key_file>")
+		os.Exit(1)
+	}
+
+	path := os.Args[1]
+	bc, err := initBlockchain(nodeFromFile(path))
 	if err != nil {
 		panic(err)
 	}
