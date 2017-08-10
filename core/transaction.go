@@ -45,6 +45,7 @@ var rulesets = map[TransactionType][]Rule{
 			OUTPUT_TYPE_ALL_WRITERS:      true,
 			OUTPUT_TYPE_WRITER:           true,
 		}},
+		&HasTableExistsRule{},
 	},
 	TRANSACTION_TYPE_UPDATE_TABLE: []Rule{
 		&TableExistsRule{},
