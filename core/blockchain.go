@@ -97,7 +97,7 @@ func (bc *Blockchain) ValidateTransaction(tx *Transaction) error {
 
 	for _, outputRes := range requiredOutputRes {
 		dbOutput := outputRes.Output
-		output, err := NewOutput(dbOutput.Type, dbOutput.Data)
+		output, err := NewOutput(OutputType(dbOutput.Type), dbOutput.Data)
 		if err != nil {
 			return err
 		}
@@ -143,7 +143,7 @@ func (bc *Blockchain) ValidateTransaction(tx *Transaction) error {
 	for _, inputRes := range spentInputRes {
 		if BlockState(inputRes.Block.State) != BLOCK_STATE_REJECTED {
 			dbInput := inputRes.Input
-			input, err := NewInput(dbInput.Type, dbInput.OutputHash, dbInput.Data)
+			input, err := NewInput(InputType(dbInput.Type), dbInput.OutputHash, dbInput.Data)
 			if err != nil {
 				return err
 			}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/wojtechnology/glacier/common"
 	"github.com/wojtechnology/glacier/meddb"
 )
 
@@ -327,36 +328,53 @@ func toDBOutput(o Output) *meddb.Output {
 	}
 }
 
-// Factory method for creating outputs
-func NewOutput(outputType int, data []byte) (Output, error) {
-	var coreOutput Output
-
-	switch OutputType(outputType) {
+// Returns instance of correct output implementation for given `outputType`.
+func outputFromOutputType(outputType OutputType) (Output, error) {
+	switch outputType {
 	case OUTPUT_TYPE_TABLE_EXISTS:
-		coreOutput = &TableExistsOutput{}
+		return &TableExistsOutput{}, nil
 	case OUTPUT_TYPE_COL_ALLOWED:
-		coreOutput = &ColAllowedOutput{}
+		return &ColAllowedOutput{}, nil
 	case OUTPUT_TYPE_ALL_COLS_ALLOWED:
-		coreOutput = &AllColsAllowedOutput{}
+		return &AllColsAllowedOutput{}, nil
 	case OUTPUT_TYPE_ALL_ADMINS:
-		coreOutput = &AllAdminsOutput{}
+		return &AllAdminsOutput{}, nil
 	case OUTPUT_TYPE_ADMIN:
-		coreOutput = &AdminOutput{}
+		return &AdminOutput{}, nil
 	case OUTPUT_TYPE_ALL_WRITERS:
-		coreOutput = &AllWritersOutput{}
+		return &AllWritersOutput{}, nil
 	case OUTPUT_TYPE_WRITER:
-		coreOutput = &WriterOutput{}
+		return &WriterOutput{}, nil
 	case OUTPUT_TYPE_ALL_ROW_WRITERS:
-		coreOutput = &AllRowWritersOutput{}
+		return &AllRowWritersOutput{}, nil
 	case OUTPUT_TYPE_ROW_WRITER:
-		coreOutput = &RowWriterOutput{}
+		return &RowWriterOutput{}, nil
 	default:
 		return nil, errors.New(fmt.Sprintf("Invalid output type %d\n", outputType))
 	}
+}
 
+func NewOutputFromMap(outputType OutputType, data map[string]interface{}) (Output, error) {
+	coreOutput, err := outputFromOutputType(outputType)
+	if err != nil {
+		return nil, err
+	}
+	for fieldName, fieldValue := range data {
+		if err := common.SetStructField(coreOutput, fieldName, fieldValue); err != nil {
+			return nil, err
+		}
+	}
+	return coreOutput, nil
+}
+
+// Factory method for creating outputs
+func NewOutput(outputType OutputType, data []byte) (Output, error) {
+	coreOutput, err := outputFromOutputType(outputType)
+	if err != nil {
+		return nil, err
+	}
 	if err := coreOutput.FromData(data); err != nil {
 		return nil, err
 	}
-
 	return coreOutput, nil
 }
