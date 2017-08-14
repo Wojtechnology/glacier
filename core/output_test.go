@@ -13,7 +13,7 @@ import (
 
 func TestNewOutputFromMap(t *testing.T) {
 	tableName := []byte("yo")
-	o, err := NewOutputFromMap(OUTPUT_TYPE_TABLE_EXISTS, map[string]interface{}{
+	o, err := NewOutputFromMap(OUTPUT_TYPE_TABLE_EXISTS, map[string][]byte{
 		"TableName": tableName,
 	})
 	assert.Nil(t, err)
@@ -23,15 +23,8 @@ func TestNewOutputFromMap(t *testing.T) {
 }
 
 func TestNewOutputFromMapInvalidField(t *testing.T) {
-	_, err := NewOutputFromMap(OUTPUT_TYPE_TABLE_EXISTS, map[string]interface{}{
+	_, err := NewOutputFromMap(OUTPUT_TYPE_TABLE_EXISTS, map[string][]byte{
 		"RowId": []byte("brah"),
-	})
-	assert.IsType(t, errors.New(""), err)
-}
-
-func TestNewOutputFromMapInvalidType(t *testing.T) {
-	_, err := NewOutputFromMap(OUTPUT_TYPE_TABLE_EXISTS, map[string]interface{}{
-		"TableName": "wrong type",
 	})
 	assert.IsType(t, errors.New(""), err)
 }

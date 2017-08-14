@@ -13,7 +13,7 @@ import (
 
 func TestNewInputFromMap(t *testing.T) {
 	tableName := []byte("yo")
-	o, err := NewInputFromMap(INPUT_TYPE_ADMIN, []byte("helo"), map[string]interface{}{
+	o, err := NewInputFromMap(INPUT_TYPE_ADMIN, []byte("helo"), map[string][]byte{
 		"Sig": tableName,
 	})
 	assert.Nil(t, err)
@@ -23,15 +23,8 @@ func TestNewInputFromMap(t *testing.T) {
 }
 
 func TestNewInputFromMapInvalidField(t *testing.T) {
-	_, err := NewInputFromMap(INPUT_TYPE_ADMIN, []byte("helo"), map[string]interface{}{
+	_, err := NewInputFromMap(INPUT_TYPE_ADMIN, []byte("helo"), map[string][]byte{
 		"RowId": []byte("brah"),
-	})
-	assert.IsType(t, errors.New(""), err)
-}
-
-func TestNewInputFromMapInvalidType(t *testing.T) {
-	_, err := NewInputFromMap(INPUT_TYPE_ADMIN, []byte("helo"), map[string]interface{}{
-		"Sig": "wrong type",
 	})
 	assert.IsType(t, errors.New(""), err)
 }

@@ -354,7 +354,7 @@ func outputFromOutputType(outputType OutputType) (Output, error) {
 	}
 }
 
-func NewOutputFromMap(outputType OutputType, data map[string]interface{}) (Output, error) {
+func NewOutputFromMap(outputType OutputType, data map[string][]byte) (Output, error) {
 	coreOutput, err := outputFromOutputType(outputType)
 	if err != nil {
 		return nil, err

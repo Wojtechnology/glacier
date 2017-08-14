@@ -25,19 +25,19 @@ func SetupRoutes() {
 // --------
 
 type CellData struct {
-	Data  string   `json:"data"`
+	Data  string   `json:"data"` // Base64 encoded
 	VerId *big.Int `json:"ver_id"`
 }
 
 type OutputData struct {
 	Type int    `json:"type"`
-	Data string `json:"data"`
+	Data string `json:"data"` // Base64 encoded
 }
 
 type InputData struct {
 	Type       int    `json:"type"`
-	OutputHash string `json:"output_hash"`
-	Data       string `json:"data"`
+	OutputHash string `json:"output_hash"` // Base64 encoded
+	Data       string `json:"data"`        // Base64 encoded
 }
 
 type TransactionData struct {

@@ -150,7 +150,7 @@ func inputFromInputType(inputType InputType, outputHash []byte) (Input, error) {
 }
 
 func NewInputFromMap(inputType InputType, outputHash []byte,
-	data map[string]interface{}) (Input, error) {
+	data map[string][]byte) (Input, error) {
 
 	coreInput, err := inputFromInputType(inputType, outputHash)
 	if err != nil {
