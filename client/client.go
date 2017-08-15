@@ -1,12 +1,16 @@
 package client
 
 import (
+	"bytes"
+	"crypto/ecdsa"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
+	"net/http"
 
 	"github.com/wojtechnology/glacier/core"
 	"github.com/wojtechnology/glacier/crypto"
+	"github.com/wojtechnology/glacier/handler"
 )
 
 type Client struct {
@@ -26,21 +30,8 @@ const (
 	INPUT_FLAG_ROW_WRITER
 )
 
-type Cell struct {
-	data  []byte
-	verId *big.Int
-}
-
-func NewCell(data []byte) *Cell {
-	return NewCellVerId(data, nil)
-}
-
-func NewCellVerId(data []byte, verId *big.Int) *Cell {
-	return &Cell{data: data, verId: verId}
-}
-
-func NewClient(url string, priv []byte) *Client {
-	return &Client{url: url, me: core.NewNode(crypto.ParsePrivateKey(priv))}
+func NewClient(url string, priv *ecdsa.PrivateKey) *Client {
+	return &Client{url: url, me: core.NewNode(priv)}
 }
 
 func (c *Client) CreateTable(tableName []byte, outputs []map[string][]byte) error {
@@ -53,7 +44,7 @@ func (c *Client) CreateTable(tableName []byte, outputs []map[string][]byte) erro
 		TableName: tableName,
 		Outputs:   coreOutputs,
 	}
-	err = postTransaction(tx)
+	err = c.postTransaction(tx)
 	if err != nil {
 		return err
 	}
@@ -63,14 +54,114 @@ func (c *Client) CreateTable(tableName []byte, outputs []map[string][]byte) erro
 func (c *Client) UpdateTable(tableName []byte, outputs []map[string][]byte,
 	inputFlag InputFlag) error {
 
-	// TODO: Implement
+	coreOutputs, err := outputsFromMaps(outputs)
+	if err != nil {
+		return err
+	}
+	tx := &core.Transaction{
+		Type:      core.TRANSACTION_TYPE_UPDATE_TABLE,
+		TableName: tableName,
+		Outputs:   coreOutputs,
+	}
+	err = c.populateAndSignInputs(tx, inputFlag)
+	if err != nil {
+		return err
+	}
+	err = c.postTransaction(tx)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (c *Client) PutCells(tableName, rowId []byte, cols map[string]*Cell,
+func (c *Client) PutCells(tableName, rowId []byte, cols map[string]*core.Cell,
 	outputs []map[string][]byte, inputFlag InputFlag) error {
 
-	// TODO: Implement
+	coreOutputs, err := outputsFromMaps(outputs)
+	if err != nil {
+		return err
+	}
+	tx := &core.Transaction{
+		Type:      core.TRANSACTION_TYPE_PUT_CELLS,
+		TableName: tableName,
+		RowId:     rowId,
+		Cols:      cols,
+		Outputs:   coreOutputs,
+	}
+	err = c.populateAndSignInputs(tx, inputFlag)
+	if err != nil {
+		return err
+	}
+	err = c.postTransaction(tx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Populates the transaction with signed inputs according the the given `inputFlag`.
+// This happens in two steps:
+// 1) Populate transaction with inputs that are missing signatures and get the transaction hash.
+// Note that the transaction hash contains the hashes of all of the inputs, but the hashes of the
+// inputs do not contain signature (since that would create a circular dependency).
+// 2) Sign the transaction hash using my private key and populate the signatures for all of the
+// inputs.
+func (c *Client) populateAndSignInputs(tx *core.Transaction, inputFlag InputFlag) error {
+	coreInputs := make([]core.Input, 0)
+	if inputFlag&INPUT_FLAG_ADMIN != 0 {
+		assocOutput := &core.AdminOutput{TableName: tx.TableName, PubKey: c.me.PubKey}
+		coreInput := &core.AdminInput{InputLink: core.InputLink{
+			LinksTo: core.HashOutput(assocOutput)},
+		}
+		coreInputs = append(coreInputs, coreInput)
+	}
+	if inputFlag&INPUT_FLAG_WRITER != 0 {
+		assocOutput := &core.WriterOutput{TableName: tx.TableName, PubKey: c.me.PubKey}
+		coreInput := &core.WriterInput{InputLink: core.InputLink{
+			LinksTo: core.HashOutput(assocOutput)},
+		}
+		coreInputs = append(coreInputs, coreInput)
+	}
+	if inputFlag&INPUT_FLAG_ROW_WRITER != 0 {
+		assocOutput := &core.RowWriterOutput{TableName: tx.TableName, PubKey: c.me.PubKey}
+		coreInput := &core.RowWriterInput{InputLink: core.InputLink{
+			LinksTo: core.HashOutput(assocOutput)},
+		}
+		coreInputs = append(coreInputs, coreInput)
+	}
+
+	tx.Inputs = coreInputs
+	sig, err := crypto.Sign(tx.Hash().Bytes(), c.me.PrivKey)
+	if err != nil {
+		return err
+	}
+
+	for _, coreInput := range tx.Inputs {
+		err := coreInput.FromData(sig)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Actually makes request to server using the given `url` in the client.
+// Doesn't modify the transaction.
+func (c *Client) postTransaction(tx *core.Transaction) error {
+	td := handler.FromCoreTransaction(tx)
+	data := new(bytes.Buffer)
+	err := json.NewEncoder(data).Encode(td)
+
+	res, err := http.Post(c.url+"/transaction/", "application/json; charset=utf-8", data)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%v", res.Status)
+
 	return nil
 }
 
@@ -123,11 +214,4 @@ func outputsFromMaps(outputs []map[string][]byte) ([]core.Output, error) {
 		}
 	}
 	return coreOutputs, nil
-}
-
-// Actually makes request to server using the given `url` in the client.
-// Doesn't modify the transaction.
-func postTransaction(tx *core.Transaction) error {
-	// TODO: Implement
-	return nil
 }

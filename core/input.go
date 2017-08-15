@@ -20,7 +20,11 @@ const (
 type Input interface {
 	OutputHash() Hash
 	Type() InputType
+	// TODO: Make explicit that this is a signature. For now there are no use cases of this being
+	// anything else and there will probably not be.
 	Data() []byte
+	// TODO: Make explicit that this is a signature. For now there are no use cases of this being
+	// anything else and there will probably not be.
 	FromData([]byte) error
 }
 
@@ -116,14 +120,12 @@ func (in *RowWriterInput) FromData(data []byte) error {
 type inputHashObject struct {
 	Type       *big.Int
 	OutputHash []byte
-	Data       []byte
 }
 
-func hashInput(in Input) Hash {
+func HashInput(in Input) Hash {
 	return rlpHash(&inputHashObject{
 		Type:       intToBigInt(int(in.Type())),
 		OutputHash: in.OutputHash().Bytes(),
-		Data:       in.Data(),
 	})
 }
 

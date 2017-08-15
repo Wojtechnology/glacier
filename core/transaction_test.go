@@ -51,12 +51,12 @@ func TestTransactionHash(t *testing.T) {
 			},
 		},
 		OutputHashes: [][]byte{
-			hashOutput(tx.Outputs[0]).Bytes(),
-			hashOutput(tx.Outputs[1]).Bytes(),
+			HashOutput(tx.Outputs[0]).Bytes(),
+			HashOutput(tx.Outputs[1]).Bytes(),
 		},
 		InputHashes: [][]byte{
-			hashInput(tx.Inputs[0]).Bytes(),
-			hashInput(tx.Inputs[1]).Bytes(),
+			HashInput(tx.Inputs[0]).Bytes(),
+			HashInput(tx.Inputs[1]).Bytes(),
 		},
 	})
 	assert.Equal(t, expected, tx.Hash())
@@ -92,12 +92,12 @@ func TestDBTransactionMapper(t *testing.T) {
 			},
 		},
 		OutputHashes: [][]byte{
-			hashOutput(tx.Outputs[0]).Bytes(),
-			hashOutput(tx.Outputs[1]).Bytes(),
+			HashOutput(tx.Outputs[0]).Bytes(),
+			HashOutput(tx.Outputs[1]).Bytes(),
 		},
 		InputHashes: [][]byte{
-			hashInput(tx.Inputs[0]).Bytes(),
-			hashInput(tx.Inputs[1]).Bytes(),
+			HashInput(tx.Inputs[0]).Bytes(),
+			HashInput(tx.Inputs[1]).Bytes(),
 		},
 	})
 
@@ -116,12 +116,12 @@ func TestDBTransactionMapper(t *testing.T) {
 		AssignedAt: big.NewInt(420),
 		Outputs: []*meddb.Output{
 			&meddb.Output{
-				Hash: hashOutput(tx.Outputs[0]).Bytes(),
+				Hash: HashOutput(tx.Outputs[0]).Bytes(),
 				Type: int(tx.Outputs[0].Type()),
 				Data: tx.Outputs[0].Data(),
 			},
 			&meddb.Output{
-				Hash: hashOutput(tx.Outputs[1]).Bytes(),
+				Hash: HashOutput(tx.Outputs[1]).Bytes(),
 				Type: int(tx.Outputs[1].Type()),
 				Data: tx.Outputs[1].Data(),
 			},

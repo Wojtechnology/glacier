@@ -312,7 +312,7 @@ type outputHashObject struct {
 }
 
 // Hashes rlp encoded outputHashObject with fields filled in.
-func hashOutput(o Output) Hash {
+func HashOutput(o Output) Hash {
 	return rlpHash(&outputHashObject{
 		Type: intToBigInt(int(o.Type())),
 		Data: o.Data(),
@@ -322,7 +322,7 @@ func hashOutput(o Output) Hash {
 // Mapper from core Output implementation to db Output object.
 func toDBOutput(o Output) *meddb.Output {
 	return &meddb.Output{
-		Hash: hashOutput(o).Bytes(),
+		Hash: HashOutput(o).Bytes(),
 		Type: int(o.Type()),
 		Data: o.Data(),
 	}

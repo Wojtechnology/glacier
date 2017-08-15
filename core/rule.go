@@ -20,7 +20,7 @@ type Rule interface {
 type TableExistsOutputMixin struct{}
 
 func (mixin *TableExistsOutputMixin) getTableExistsOutputHash(tx *Transaction) Hash {
-	return hashOutput(&TableExistsOutput{TableName: tx.TableName})
+	return HashOutput(&TableExistsOutput{TableName: tx.TableName})
 }
 
 func (mixin *TableExistsOutputMixin) RequiredOutputIds(tx *Transaction) [][]byte {
@@ -74,7 +74,7 @@ func (rule *TableMissingRule) Validate(tx *Transaction, linkedOutputs map[string
 type ColsAllowedRule struct{}
 
 func (rule *ColsAllowedRule) getAllColsAllowedOutputHash(tx *Transaction) Hash {
-	return hashOutput(&AllColsAllowedOutput{TableName: tx.TableName})
+	return HashOutput(&AllColsAllowedOutput{TableName: tx.TableName})
 }
 
 func (rule *ColsAllowedRule) getColAllowedOutputHashes(tx *Transaction) []Hash {
@@ -82,7 +82,7 @@ func (rule *ColsAllowedRule) getColAllowedOutputHashes(tx *Transaction) []Hash {
 
 	i := 0
 	for colId, _ := range tx.Cols {
-		hashes[i] = hashOutput(&ColAllowedOutput{TableName: tx.TableName, ColName: []byte(colId)})
+		hashes[i] = HashOutput(&ColAllowedOutput{TableName: tx.TableName, ColName: []byte(colId)})
 		i++
 	}
 
@@ -136,7 +136,7 @@ func (rule *ColsAllowedRule) Validate(tx *Transaction, linkedOutputs map[string]
 type AdminRule struct{}
 
 func (rule *AdminRule) getAllAdminsOutputHash(tx *Transaction) Hash {
-	return hashOutput(&AllAdminsOutput{TableName: tx.TableName})
+	return HashOutput(&AllAdminsOutput{TableName: tx.TableName})
 }
 
 func (rule *AdminRule) RequiredOutputIds(tx *Transaction) [][]byte {
@@ -197,7 +197,7 @@ func (rule *AdminRule) Validate(tx *Transaction, linkedOutputs map[string]Output
 type WriterRule struct{}
 
 func (rule *WriterRule) getAllWritersOutputHash(tx *Transaction) Hash {
-	return hashOutput(&AllWritersOutput{TableName: tx.TableName})
+	return HashOutput(&AllWritersOutput{TableName: tx.TableName})
 }
 
 func (rule *WriterRule) RequiredOutputIds(tx *Transaction) [][]byte {
@@ -258,7 +258,7 @@ func (rule *WriterRule) Validate(tx *Transaction, linkedOutputs map[string]Outpu
 type RowRule struct{}
 
 func (rule *RowRule) getAllRowWritersOutputHash(tx *Transaction) Hash {
-	return hashOutput(&AllRowWritersOutput{TableName: tx.TableName, RowId: tx.RowId})
+	return HashOutput(&AllRowWritersOutput{TableName: tx.TableName, RowId: tx.RowId})
 }
 
 func (rule *RowRule) RequiredOutputIds(tx *Transaction) [][]byte {

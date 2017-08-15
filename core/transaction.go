@@ -113,14 +113,14 @@ func (tx *Transaction) Hash() Hash {
 	if tx.Outputs != nil {
 		outputHashes = make([][]byte, len(tx.Outputs))
 		for i, output := range tx.Outputs {
-			outputHashes[i] = hashOutput(output).Bytes()
+			outputHashes[i] = HashOutput(output).Bytes()
 		}
 	}
 
 	if tx.Inputs != nil {
 		inputHashes = make([][]byte, len(tx.Inputs))
 		for i, input := range tx.Inputs {
-			inputHashes[i] = hashInput(input).Bytes()
+			inputHashes[i] = HashInput(input).Bytes()
 		}
 	}
 
