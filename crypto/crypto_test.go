@@ -1,7 +1,6 @@
 package crypto
 
 import (
-	"crypto/ecdsa"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,7 +18,7 @@ func TestSignRetrieve(t *testing.T) {
 	sig, err := Sign(hash, priv)
 	assert.Nil(t, err)
 
-	pub := priv.Public().(*ecdsa.PublicKey)
+	pub := &priv.PublicKey
 	expected := MarshalPublicKey(pub)
 
 	actual, err := RetrievePublicKey(hash, sig)

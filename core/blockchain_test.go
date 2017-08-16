@@ -192,6 +192,25 @@ func TestGetBlocks(t *testing.T) {
 	assert.Equal(t, b, bs[0])
 }
 
+func TestValidSignedBlock(t *testing.T) {
+	db, err := meddb.NewMemoryBlockchainDB()
+	assert.Nil(t, err)
+
+	priv, err := crypto.NewPrivateKey()
+	assert.Nil(t, err)
+	me := NewNode(priv)
+	tx := &Transaction{TableName: []byte{1}}
+	err = db.WriteTransaction(tx.toDBTransaction())
+	assert.Nil(t, err)
+
+	bc := NewBlockchain(db, nil, me, []*Node{me})
+
+	txs := []*Transaction{tx}
+	b, err := bc.BuildBlock(txs)
+	assert.Nil(t, err)
+	assert.Nil(t, bc.ValidateBlock(b))
+}
+
 func TestGetOldestBlocks(t *testing.T) {
 	db, err := meddb.NewMemoryBlockchainDB()
 	assert.Nil(t, err)

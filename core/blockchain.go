@@ -96,15 +96,16 @@ func (bc *Blockchain) ValidateTransaction(tx *Transaction) error {
 	undecidedOutputs := make(map[string]Output)
 
 	for _, outputRes := range requiredOutputRes {
-		output, err := fromDBOutput(outputRes.Output)
+		dbOutput := outputRes.Output
+		output, err := NewOutput(OutputType(dbOutput.Type), dbOutput.Data)
 		if err != nil {
 			return err
 		}
 		switch BlockState(outputRes.Block.State) {
 		case BLOCK_STATE_UNDECIDED:
-			undecidedOutputs[hashOutput(output).String()] = output
+			undecidedOutputs[HashOutput(output).String()] = output
 		case BLOCK_STATE_ACCEPTED:
-			acceptedOutputs[hashOutput(output).String()] = output
+			acceptedOutputs[HashOutput(output).String()] = output
 		}
 	}
 
@@ -128,7 +129,10 @@ func (bc *Blockchain) ValidateTransaction(tx *Transaction) error {
 
 	if len(rejectedOutputIds) > 0 { // rejected or missing
 		return &MissingOutputsError{OutputIds: rejectedOutputIds}
-	} else if len(undecidedOutputs) > 0 {
+	} else if len(undecidedOutputIds) > 0 {
+		// TODO: Figure out correct way to deal with undecided output ids
+		// Take into consideration race conditions that can occur with transactions in the
+		// same block that reference each other.
 		return &UndecidedOutputsError{OutputIds: undecidedOutputIds}
 	}
 
@@ -141,7 +145,8 @@ func (bc *Blockchain) ValidateTransaction(tx *Transaction) error {
 	spentInputs := make(map[string][]Input)
 	for _, inputRes := range spentInputRes {
 		if BlockState(inputRes.Block.State) != BLOCK_STATE_REJECTED {
-			input, err := fromDBInput(inputRes.Input)
+			dbInput := inputRes.Input
+			input, err := NewInput(InputType(dbInput.Type), dbInput.OutputHash, dbInput.Data)
 			if err != nil {
 				return err
 			}

@@ -114,14 +114,14 @@ func (tx *Transaction) Hash() Hash {
 	if tx.Outputs != nil {
 		outputHashes = make([][]byte, len(tx.Outputs))
 		for i, output := range tx.Outputs {
-			outputHashes[i] = hashOutput(output).Bytes()
+			outputHashes[i] = HashOutput(output).Bytes()
 		}
 	}
 
 	if tx.Inputs != nil {
 		inputHashes = make([][]byte, len(tx.Inputs))
 		for i, input := range tx.Inputs {
-			inputHashes[i] = hashInput(input).Bytes()
+			inputHashes[i] = HashInput(input).Bytes()
 		}
 	}
 
@@ -234,7 +234,7 @@ func fromDBTransaction(tx *meddb.Transaction) *Transaction {
 		outputs = make([]Output, len(tx.Outputs))
 		for i, output := range tx.Outputs {
 			// TODO: Log when error occurs, since this should not be able to error
-			outputs[i], _ = fromDBOutput(output)
+			outputs[i], _ = NewOutput(OutputType(output.Type), output.Data)
 		}
 	}
 
@@ -242,7 +242,7 @@ func fromDBTransaction(tx *meddb.Transaction) *Transaction {
 		inputs = make([]Input, len(tx.Inputs))
 		for i, input := range tx.Inputs {
 			// TODO: Log when error occurs, since this should not be able to error
-			inputs[i], _ = fromDBInput(input)
+			inputs[i], _ = NewInput(InputType(input.Type), input.OutputHash, input.Data)
 		}
 	}
 

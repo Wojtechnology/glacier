@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/wojtechnology/glacier/common"
 	"github.com/wojtechnology/glacier/meddb"
 )
 
@@ -19,7 +20,11 @@ const (
 type Input interface {
 	OutputHash() Hash
 	Type() InputType
+	// TODO: Make explicit that this is a signature. For now there are no use cases of this being
+	// anything else and there will probably not be.
 	Data() []byte
+	// TODO: Make explicit that this is a signature. For now there are no use cases of this being
+	// anything else and there will probably not be.
 	FromData([]byte) error
 }
 
@@ -115,14 +120,12 @@ func (in *RowWriterInput) FromData(data []byte) error {
 type inputHashObject struct {
 	Type       *big.Int
 	OutputHash []byte
-	Data       []byte
 }
 
-func hashInput(in Input) Hash {
+func HashInput(in Input) Hash {
 	return rlpHash(&inputHashObject{
 		Type:       intToBigInt(int(in.Type())),
 		OutputHash: in.OutputHash().Bytes(),
-		Data:       in.Data(),
 	})
 }
 
@@ -134,21 +137,42 @@ func toDBInput(in Input) *meddb.Input {
 	}
 }
 
-func fromDBInput(in *meddb.Input) (Input, error) {
-	var coreInput Input
-
-	switch InputType(in.Type) {
+// Returns instance of correct input implementation for given `inputType`.
+func inputFromInputType(inputType InputType, outputHash []byte) (Input, error) {
+	switch inputType {
 	case INPUT_TYPE_ADMIN:
-		coreInput = &AdminInput{InputLink: InputLink{BytesToHash(in.OutputHash)}}
+		return &AdminInput{InputLink: InputLink{BytesToHash(outputHash)}}, nil
 	case INPUT_TYPE_WRITER:
-		coreInput = &WriterInput{InputLink: InputLink{BytesToHash(in.OutputHash)}}
+		return &WriterInput{InputLink: InputLink{BytesToHash(outputHash)}}, nil
+	case INPUT_TYPE_ROW_WRITER:
+		return &RowWriterInput{InputLink: InputLink{BytesToHash(outputHash)}}, nil
 	default:
-		return nil, errors.New(fmt.Sprint("Invalid input type: %d\n", in.Type))
+		return nil, errors.New(fmt.Sprintf("Invalid input type %d\n", inputType))
 	}
+}
 
-	if err := coreInput.FromData(in.Data); err != nil {
+func NewInputFromMap(inputType InputType, outputHash []byte,
+	data map[string][]byte) (Input, error) {
+
+	coreInput, err := inputFromInputType(inputType, outputHash)
+	if err != nil {
 		return nil, err
 	}
+	for fieldName, fieldValue := range data {
+		if err := common.SetStructField(coreInput, fieldName, fieldValue); err != nil {
+			return nil, err
+		}
+	}
+	return coreInput, nil
+}
 
+func NewInput(inputType InputType, outputHash, data []byte) (Input, error) {
+	coreInput, err := inputFromInputType(inputType, outputHash)
+	if err != nil {
+		return nil, err
+	}
+	if err := coreInput.FromData(data); err != nil {
+		return nil, err
+	}
 	return coreInput, nil
 }

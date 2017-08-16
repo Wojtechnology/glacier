@@ -7,6 +7,7 @@ import (
 
 	"github.com/wojtechnology/glacier/common"
 	"github.com/wojtechnology/glacier/core"
+	"github.com/wojtechnology/glacier/logging"
 )
 
 // TODO: This should be in config
@@ -137,6 +138,7 @@ func addBlock(bc *core.Blockchain, s *blockLoopState) error {
 	for _, tx := range txs {
 		err := bc.ValidateTransaction(tx)
 		if err != nil {
+			logging.Error(err.Error())
 			if _, ok := err.(*core.UndecidedOutputsError); ok {
 				// Could be decided later so put these back into backlog
 				undecidedTxs = append(undecidedTxs, tx)
