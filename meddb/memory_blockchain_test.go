@@ -168,11 +168,13 @@ func TestMemoryGetOutputs(t *testing.T) {
 
 	db.blockTable = map[string]*Block{"block": b}
 
+	txCopy := b.Transactions[0].Clone()
 	bCopy := b.Clone()
 	bCopy.Transactions = nil
 	expected := []*OutputRes{&OutputRes{
-		Block:  bCopy,
-		Output: b.Transactions[0].Outputs[0].Clone(),
+		Block:       bCopy,
+		Transaction: txCopy,
+		Output:      b.Transactions[0].Outputs[0].Clone(),
 	}}
 	actual, err := db.GetOutputs([][]byte{[]byte("output1")})
 	assert.Nil(t, err)

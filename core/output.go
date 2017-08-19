@@ -24,11 +24,38 @@ const (
 	OUTPUT_TYPE_ROW_WRITER                         // ROW_WRITER       = 8
 )
 
+// Defines OutputRequirement "enum"
+// Essentially specifies how strict we are about whether we could find the output when validating
+// a transaction. Rules returns some set of outputs, and not all of them are required. In fact,
+// sometimes we are looking for the lack of an output.
+// This will work for now, but in the future, we might have outputs that have a different strictness
+// depending on which rule they are associated with, so we will need a more rule specific way of
+// dealing with this.
+type OutputRequirement int
+
+const (
+	// If the output is missing, we ignore it.
+	OUTPUT_REQUIREMENT_NONE OutputRequirement = iota // NONE = 0
+	// NONE + if the output is undecided, we place it back in the backlog
+	OUTPUT_REQUIREMENT_DECIDED // DECIDED = 1
+	// DECIDED + if the output is missing or rejected, transaction is invalid
+	OUTPUT_REQUIREMENT_REQUIRED // REQUIRED = 2
+)
+
 type Output interface {
 	Type() OutputType
 	Data() []byte
-	IsConsumable() bool
+	Requirement() OutputRequirement
 	FromData([]byte) error
+	TableName() []byte
+}
+
+type TableNameMixin struct {
+	Table []byte
+}
+
+func (mixin TableNameMixin) TableName() []byte {
+	return mixin.Table
 }
 
 // --------------------------------
@@ -38,7 +65,7 @@ type Output interface {
 // --------------------------------
 
 type TableExistsOutput struct {
-	TableName []byte
+	TableNameMixin
 }
 
 func (o *TableExistsOutput) Type() OutputType {
@@ -46,15 +73,15 @@ func (o *TableExistsOutput) Type() OutputType {
 }
 
 func (o *TableExistsOutput) Data() []byte {
-	return o.TableName
+	return o.TableName()
 }
 
-func (o *TableExistsOutput) IsConsumable() bool {
-	return false
+func (o *TableExistsOutput) Requirement() OutputRequirement {
+	return OUTPUT_REQUIREMENT_DECIDED
 }
 
 func (o *TableExistsOutput) FromData(data []byte) error {
-	o.TableName = data
+	o.TableNameMixin.Table = data
 	return nil
 }
 
@@ -65,8 +92,8 @@ func (o *TableExistsOutput) FromData(data []byte) error {
 // --------------------------------
 
 type ColAllowedOutput struct {
-	TableName []byte
-	ColName   []byte
+	TableNameMixin
+	ColName []byte
 }
 
 func (o *ColAllowedOutput) Type() OutputType {
@@ -79,8 +106,8 @@ func (o *ColAllowedOutput) Data() []byte {
 	return data
 }
 
-func (o *ColAllowedOutput) IsConsumable() bool {
-	return false
+func (o *ColAllowedOutput) Requirement() OutputRequirement {
+	return OUTPUT_REQUIREMENT_NONE
 }
 
 func (o *ColAllowedOutput) FromData(data []byte) error {
@@ -97,7 +124,7 @@ func (o *ColAllowedOutput) FromData(data []byte) error {
 // --------------------------------
 
 type AllColsAllowedOutput struct {
-	TableName []byte
+	TableNameMixin
 }
 
 func (o *AllColsAllowedOutput) Type() OutputType {
@@ -105,15 +132,15 @@ func (o *AllColsAllowedOutput) Type() OutputType {
 }
 
 func (o *AllColsAllowedOutput) Data() []byte {
-	return o.TableName
+	return o.TableName()
 }
 
-func (o *AllColsAllowedOutput) IsConsumable() bool {
-	return false
+func (o *AllColsAllowedOutput) Requirement() OutputRequirement {
+	return OUTPUT_REQUIREMENT_NONE
 }
 
 func (o *AllColsAllowedOutput) FromData(data []byte) error {
-	o.TableName = data
+	o.TableNameMixin.Table = data
 	return nil
 }
 
@@ -124,7 +151,7 @@ func (o *AllColsAllowedOutput) FromData(data []byte) error {
 // --------------------------------
 
 type AllAdminsOutput struct {
-	TableName []byte
+	TableNameMixin
 }
 
 func (o *AllAdminsOutput) Type() OutputType {
@@ -132,15 +159,15 @@ func (o *AllAdminsOutput) Type() OutputType {
 }
 
 func (o *AllAdminsOutput) Data() []byte {
-	return o.TableName
+	return o.TableName()
 }
 
-func (o *AllAdminsOutput) IsConsumable() bool {
-	return false
+func (o *AllAdminsOutput) Requirement() OutputRequirement {
+	return OUTPUT_REQUIREMENT_NONE
 }
 
 func (o *AllAdminsOutput) FromData(data []byte) error {
-	o.TableName = data
+	o.TableNameMixin.Table = data
 	return nil
 }
 
@@ -151,8 +178,8 @@ func (o *AllAdminsOutput) FromData(data []byte) error {
 // --------------------------------
 
 type AdminOutput struct {
-	TableName []byte
-	PubKey    []byte
+	TableNameMixin
+	PubKey []byte
 }
 
 func (o *AdminOutput) Type() OutputType {
@@ -165,8 +192,8 @@ func (o *AdminOutput) Data() []byte {
 	return data
 }
 
-func (o *AdminOutput) IsConsumable() bool {
-	return false
+func (o *AdminOutput) Requirement() OutputRequirement {
+	return OUTPUT_REQUIREMENT_REQUIRED
 }
 
 func (o *AdminOutput) FromData(data []byte) error {
@@ -183,7 +210,7 @@ func (o *AdminOutput) FromData(data []byte) error {
 // --------------------------------
 
 type AllWritersOutput struct {
-	TableName []byte
+	TableNameMixin
 }
 
 func (o *AllWritersOutput) Type() OutputType {
@@ -191,15 +218,15 @@ func (o *AllWritersOutput) Type() OutputType {
 }
 
 func (o *AllWritersOutput) Data() []byte {
-	return o.TableName
+	return o.TableName()
 }
 
-func (o *AllWritersOutput) IsConsumable() bool {
-	return false
+func (o *AllWritersOutput) Requirement() OutputRequirement {
+	return OUTPUT_REQUIREMENT_NONE
 }
 
 func (o *AllWritersOutput) FromData(data []byte) error {
-	o.TableName = data
+	o.TableNameMixin.Table = data
 	return nil
 }
 
@@ -210,8 +237,8 @@ func (o *AllWritersOutput) FromData(data []byte) error {
 // --------------------------------
 
 type WriterOutput struct {
-	TableName []byte
-	PubKey    []byte
+	TableNameMixin
+	PubKey []byte
 }
 
 func (o *WriterOutput) Type() OutputType {
@@ -224,8 +251,8 @@ func (o *WriterOutput) Data() []byte {
 	return data
 }
 
-func (o *WriterOutput) IsConsumable() bool {
-	return false
+func (o *WriterOutput) Requirement() OutputRequirement {
+	return OUTPUT_REQUIREMENT_REQUIRED
 }
 
 func (o *WriterOutput) FromData(data []byte) error {
@@ -242,8 +269,8 @@ func (o *WriterOutput) FromData(data []byte) error {
 // --------------------------------
 
 type AllRowWritersOutput struct {
-	TableName []byte
-	RowId     []byte
+	TableNameMixin
+	RowId []byte
 }
 
 func (o *AllRowWritersOutput) Type() OutputType {
@@ -256,8 +283,8 @@ func (o *AllRowWritersOutput) Data() []byte {
 	return data
 }
 
-func (o *AllRowWritersOutput) IsConsumable() bool {
-	return false
+func (o *AllRowWritersOutput) Requirement() OutputRequirement {
+	return OUTPUT_REQUIREMENT_NONE
 }
 
 func (o *AllRowWritersOutput) FromData(data []byte) error {
@@ -274,9 +301,9 @@ func (o *AllRowWritersOutput) FromData(data []byte) error {
 // --------------------------------
 
 type RowWriterOutput struct {
-	TableName []byte
-	RowId     []byte
-	PubKey    []byte
+	TableNameMixin
+	RowId  []byte
+	PubKey []byte
 }
 
 func (o *RowWriterOutput) Type() OutputType {
@@ -289,8 +316,8 @@ func (o *RowWriterOutput) Data() []byte {
 	return data
 }
 
-func (o *RowWriterOutput) IsConsumable() bool {
-	return false
+func (o *RowWriterOutput) Requirement() OutputRequirement {
+	return OUTPUT_REQUIREMENT_REQUIRED
 }
 
 func (o *RowWriterOutput) FromData(data []byte) error {

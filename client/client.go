@@ -111,21 +111,30 @@ func (c *Client) PutCells(tableName, rowId []byte, cols map[string]*core.Cell,
 func (c *Client) populateAndSignInputs(tx *core.Transaction, inputFlag InputFlag) error {
 	coreInputs := make([]core.Input, 0)
 	if inputFlag&INPUT_FLAG_ADMIN != 0 {
-		assocOutput := &core.AdminOutput{TableName: tx.TableName, PubKey: c.me.PubKey}
+		assocOutput := &core.AdminOutput{
+			TableNameMixin: core.TableNameMixin{Table: tx.TableName},
+			PubKey:         c.me.PubKey,
+		}
 		coreInput := &core.AdminInput{InputLink: core.InputLink{
 			LinksTo: core.HashOutput(assocOutput)},
 		}
 		coreInputs = append(coreInputs, coreInput)
 	}
 	if inputFlag&INPUT_FLAG_WRITER != 0 {
-		assocOutput := &core.WriterOutput{TableName: tx.TableName, PubKey: c.me.PubKey}
+		assocOutput := &core.WriterOutput{
+			TableNameMixin: core.TableNameMixin{Table: tx.TableName},
+			PubKey:         c.me.PubKey,
+		}
 		coreInput := &core.WriterInput{InputLink: core.InputLink{
 			LinksTo: core.HashOutput(assocOutput)},
 		}
 		coreInputs = append(coreInputs, coreInput)
 	}
 	if inputFlag&INPUT_FLAG_ROW_WRITER != 0 {
-		assocOutput := &core.RowWriterOutput{TableName: tx.TableName, PubKey: c.me.PubKey}
+		assocOutput := &core.RowWriterOutput{
+			TableNameMixin: core.TableNameMixin{Table: tx.TableName},
+			PubKey:         c.me.PubKey,
+		}
 		coreInput := &core.RowWriterInput{InputLink: core.InputLink{
 			LinksTo: core.HashOutput(assocOutput)},
 		}

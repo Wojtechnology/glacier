@@ -145,8 +145,9 @@ func (db *MemoryBlockchainDB) GetOutputs(outputIds [][]byte) ([]*OutputRes, erro
 									bCopy.Transactions = nil
 								}
 								candidates = append(candidates, &OutputRes{
-									Block:  bCopy,
-									Output: output.Clone(),
+									Block:       bCopy,
+									Transaction: tx.Clone(),
+									Output:      output.Clone(),
 								})
 							}
 						}

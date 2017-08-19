@@ -28,26 +28,26 @@ func main() {
 	}
 
 	priv := privFromFile(os.Args[2])
-	_ = crypto.MarshalPublicKey(&priv.PublicKey)
+	pub := crypto.MarshalPublicKey(&priv.PublicKey)
 	c := client.NewClient(os.Args[1], priv)
-	// err := c.CreateTable([]byte("wtf"), []map[string][]byte{
-	// 	map[string][]byte{
-	// 		"type":      []byte("table_exists"),
-	// 		"TableName": []byte("wtf"),
-	// 	},
-	// 	map[string][]byte{
-	// 		"type":      []byte("admin"),
-	// 		"TableName": []byte("wtf"),
-	// 		"PubKey":    pub,
-	// 	},
-	// })
-	err := c.UpdateTable([]byte("wtf"),
-		[]map[string][]byte{
-			map[string][]byte{
-				"type":      []byte("all_writers"),
-				"TableName": []byte("wtf"),
-			},
-		}, client.InputFlag(0))
+	err := c.CreateTable([]byte("wtf"), []map[string][]byte{
+		map[string][]byte{
+			"type":      []byte("table_exists"),
+			"TableName": []byte("wtf"),
+		},
+		map[string][]byte{
+			"type":      []byte("admin"),
+			"TableName": []byte("wtf"),
+			"PubKey":    pub,
+		},
+	})
+	// err := c.UpdateTable([]byte("wtf"),
+	// 	[]map[string][]byte{
+	// 		map[string][]byte{
+	// 			"type":      []byte("all_writers"),
+	// 			"TableName": []byte("wtf"),
+	// 		},
+	// 	}, client.InputFlag(0))
 
 	if err != nil {
 		panic(err)

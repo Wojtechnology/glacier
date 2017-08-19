@@ -312,8 +312,9 @@ func (db *RethinkBlockchainDB) GetOldestBlocks(start int64, limit int) ([]*Block
 }
 
 type rethinkOutputRes struct {
-	Block  *rethinkBlock  `gorethink:"block"`
-	Output *rethinkOutput `gorethink:"output"`
+	Block       *rethinkBlock       `gorethink:"block"`
+	Transaction *rethinkTransaction `gorethink:"transaction"`
+	Output      *rethinkOutput      `gorethink:"output"`
 }
 
 func (db *RethinkBlockchainDB) GetOutputs(outputIds [][]byte) ([]*OutputRes, error) {
@@ -331,8 +332,9 @@ func (db *RethinkBlockchainDB) GetOutputs(outputIds [][]byte) ([]*OutputRes, err
 		return block.Field("transactions").ConcatMap(func(tx r.Term) interface{} {
 			return tx.Field("outputs").Map(func(output r.Term) interface{} {
 				return map[string]interface{}{
-					"block":  block.Without("transactions"),
-					"output": output,
+					"block":       block.Without("transactions"),
+					"transaction": tx,
+					"output":      output,
 				}
 			})
 		})
@@ -805,8 +807,9 @@ func fromRethinkOutputRes(rows []*rethinkOutputRes) []*OutputRes {
 	newRows := make([]*OutputRes, len(rows))
 	for i, row := range rows {
 		newRows[i] = &OutputRes{
-			Block:  fromRethinkBlock(row.Block),
-			Output: fromRethinkOutput(row.Output),
+			Block:       fromRethinkBlock(row.Block),
+			Transaction: fromRethinkTransaction(row.Transaction),
+			Output:      fromRethinkOutput(row.Output),
 		}
 	}
 	return newRows

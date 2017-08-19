@@ -73,9 +73,9 @@ func (bc *Blockchain) ValidateTransaction(tx *Transaction) error {
 		linkedOutputIds[i] = input.OutputHash().Bytes()
 	}
 
-	requiredOutputIds := make([][]byte, len(linkedOutputIds))
+	requestedOutputIds := make([][]byte, len(linkedOutputIds))
 	for i, outputId := range linkedOutputIds {
-		requiredOutputIds[i] = outputId
+		requestedOutputIds[i] = outputId
 	}
 
 	ruleset, err := tx.GetRuleset()
@@ -83,18 +83,18 @@ func (bc *Blockchain) ValidateTransaction(tx *Transaction) error {
 		return err
 	}
 	for _, rule := range ruleset {
-		requiredOutputIds = append(requiredOutputIds, rule.RequiredOutputIds(tx)...)
+		requestedOutputIds = append(requestedOutputIds, rule.RequestedOutputIds(tx)...)
 	}
 
-	// Gets outputs that are linked to by an input in the transaction.
-	requiredOutputRes, err := bc.db.GetOutputs(requiredOutputIds)
+	// Gets all required outputs from database.
+	requiredOutputRes, err := bc.db.GetOutputs(requestedOutputIds)
 	if err != nil {
 		return err
 	}
 
+	// Get the state of all outputs.
 	acceptedOutputs := make(map[string]Output)
 	undecidedOutputs := make(map[string]Output)
-
 	for _, outputRes := range requiredOutputRes {
 		dbOutput := outputRes.Output
 		output, err := NewOutput(OutputType(dbOutput.Type), dbOutput.Data)
@@ -109,8 +109,10 @@ func (bc *Blockchain) ValidateTransaction(tx *Transaction) error {
 		}
 	}
 
-	// Look for outputs that only exist in undecided or rejected blocks
-	consumableOutputIds := make([][]byte, 0)
+	// Look for outputs that only exist in undecided or rejected blocks and were linked to this
+	// transaction with some input. Since the rule specific output ids are not necessarily required
+	// (and if they are, the rule will validate that), we ignore it when they are missing or
+	// undecided.
 	undecidedOutputIds := make([][]byte, 0)
 	rejectedOutputIds := make([][]byte, 0) // rejected or missing
 	for _, outputId := range linkedOutputIds {
@@ -119,10 +121,6 @@ func (bc *Blockchain) ValidateTransaction(tx *Transaction) error {
 				undecidedOutputIds = append(undecidedOutputIds, outputId)
 			} else {
 				rejectedOutputIds = append(rejectedOutputIds, outputId)
-			}
-		} else {
-			if acceptedOutputs[string(outputId)].IsConsumable() {
-				consumableOutputIds = append(consumableOutputIds, outputId)
 			}
 		}
 	}
@@ -136,30 +134,8 @@ func (bc *Blockchain) ValidateTransaction(tx *Transaction) error {
 		return &UndecidedOutputsError{OutputIds: undecidedOutputIds}
 	}
 
-	// For all consumable outputs, get all inputs that link to that output
-	spentInputRes, err := bc.db.GetInputsByOutput(consumableOutputIds)
-	if err != nil {
-		return err
-	}
-
-	spentInputs := make(map[string][]Input)
-	for _, inputRes := range spentInputRes {
-		if BlockState(inputRes.Block.State) != BLOCK_STATE_REJECTED {
-			dbInput := inputRes.Input
-			input, err := NewInput(InputType(dbInput.Type), dbInput.OutputHash, dbInput.Data)
-			if err != nil {
-				return err
-			}
-			outputId := input.OutputHash().String()
-			if _, ok := spentInputs[outputId]; ok {
-				spentInputs[outputId] = append(spentInputs[outputId], input)
-			} else {
-				spentInputs[outputId] = []Input{input}
-			}
-		}
-	}
-
-	return tx.Validate(acceptedOutputs, spentInputs)
+	// No currency yet, so spentInputs is empty
+	return tx.Validate(acceptedOutputs, map[string][]Input{})
 }
 
 // Proxy to db to delete transactions from backlog.

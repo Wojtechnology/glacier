@@ -87,8 +87,9 @@ type Vote struct {
 
 // Structure used to return the result of the GetOutputs endpoint.
 type OutputRes struct {
-	Block  *Block
-	Output *Output
+	Block       *Block
+	Transaction *Transaction
+	Output      *Output
 }
 
 // Structure used to return the result of GetInputsByOutput endpoint.

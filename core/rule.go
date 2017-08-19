@@ -9,7 +9,7 @@ import (
 )
 
 type Rule interface {
-	RequiredOutputIds(*Transaction) [][]byte
+	RequestedOutputIds(*Transaction) [][]byte
 	Validate(*Transaction, map[string]Output, map[string][]Input) error
 }
 
@@ -20,10 +20,10 @@ type Rule interface {
 type TableExistsOutputMixin struct{}
 
 func (mixin *TableExistsOutputMixin) getTableExistsOutputHash(tx *Transaction) Hash {
-	return HashOutput(&TableExistsOutput{TableName: tx.TableName})
+	return HashOutput(&TableExistsOutput{TableNameMixin{tx.TableName}})
 }
 
-func (mixin *TableExistsOutputMixin) RequiredOutputIds(tx *Transaction) [][]byte {
+func (mixin *TableExistsOutputMixin) RequestedOutputIds(tx *Transaction) [][]byte {
 	return [][]byte{mixin.getTableExistsOutputHash(tx).Bytes()}
 }
 
@@ -74,7 +74,7 @@ func (rule *TableMissingRule) Validate(tx *Transaction, linkedOutputs map[string
 type ColsAllowedRule struct{}
 
 func (rule *ColsAllowedRule) getAllColsAllowedOutputHash(tx *Transaction) Hash {
-	return HashOutput(&AllColsAllowedOutput{TableName: tx.TableName})
+	return HashOutput(&AllColsAllowedOutput{TableNameMixin{tx.TableName}})
 }
 
 func (rule *ColsAllowedRule) getColAllowedOutputHashes(tx *Transaction) []Hash {
@@ -82,14 +82,17 @@ func (rule *ColsAllowedRule) getColAllowedOutputHashes(tx *Transaction) []Hash {
 
 	i := 0
 	for colId, _ := range tx.Cols {
-		hashes[i] = HashOutput(&ColAllowedOutput{TableName: tx.TableName, ColName: []byte(colId)})
+		hashes[i] = HashOutput(&ColAllowedOutput{
+			TableNameMixin: TableNameMixin{tx.TableName},
+			ColName:        []byte(colId),
+		})
 		i++
 	}
 
 	return hashes
 }
 
-func (rule *ColsAllowedRule) RequiredOutputIds(tx *Transaction) [][]byte {
+func (rule *ColsAllowedRule) RequestedOutputIds(tx *Transaction) [][]byte {
 	colAllowedHashes := rule.getColAllowedOutputHashes(tx)
 	outputIds := make([][]byte, len(colAllowedHashes))
 
@@ -136,10 +139,10 @@ func (rule *ColsAllowedRule) Validate(tx *Transaction, linkedOutputs map[string]
 type AdminRule struct{}
 
 func (rule *AdminRule) getAllAdminsOutputHash(tx *Transaction) Hash {
-	return HashOutput(&AllAdminsOutput{TableName: tx.TableName})
+	return HashOutput(&AllAdminsOutput{TableNameMixin{tx.TableName}})
 }
 
-func (rule *AdminRule) RequiredOutputIds(tx *Transaction) [][]byte {
+func (rule *AdminRule) RequestedOutputIds(tx *Transaction) [][]byte {
 	return [][]byte{rule.getAllAdminsOutputHash(tx).Bytes()}
 }
 
@@ -197,10 +200,10 @@ func (rule *AdminRule) Validate(tx *Transaction, linkedOutputs map[string]Output
 type WriterRule struct{}
 
 func (rule *WriterRule) getAllWritersOutputHash(tx *Transaction) Hash {
-	return HashOutput(&AllWritersOutput{TableName: tx.TableName})
+	return HashOutput(&AllWritersOutput{TableNameMixin{tx.TableName}})
 }
 
-func (rule *WriterRule) RequiredOutputIds(tx *Transaction) [][]byte {
+func (rule *WriterRule) RequestedOutputIds(tx *Transaction) [][]byte {
 	return [][]byte{rule.getAllWritersOutputHash(tx).Bytes()}
 }
 
@@ -258,10 +261,13 @@ func (rule *WriterRule) Validate(tx *Transaction, linkedOutputs map[string]Outpu
 type RowRule struct{}
 
 func (rule *RowRule) getAllRowWritersOutputHash(tx *Transaction) Hash {
-	return HashOutput(&AllRowWritersOutput{TableName: tx.TableName, RowId: tx.RowId})
+	return HashOutput(&AllRowWritersOutput{
+		TableNameMixin: TableNameMixin{tx.TableName},
+		RowId:          tx.RowId,
+	})
 }
 
-func (rule *RowRule) RequiredOutputIds(tx *Transaction) [][]byte {
+func (rule *RowRule) RequestedOutputIds(tx *Transaction) [][]byte {
 	return [][]byte{rule.getAllRowWritersOutputHash(tx).Bytes()}
 }
 
@@ -320,7 +326,7 @@ type ValidOutputTypesRule struct {
 	validTypes map[OutputType]bool // map is used as a set here
 }
 
-func (rule *ValidOutputTypesRule) RequiredOutputIds(tx *Transaction) [][]byte {
+func (rule *ValidOutputTypesRule) RequestedOutputIds(tx *Transaction) [][]byte {
 	return [][]byte{}
 }
 
@@ -345,7 +351,7 @@ func (rule *ValidOutputTypesRule) Validate(tx *Transaction, linkedOutputs map[st
 
 type HasTableExistsRule struct{}
 
-func (rule *HasTableExistsRule) RequiredOutputIds(tx *Transaction) [][]byte {
+func (rule *HasTableExistsRule) RequestedOutputIds(tx *Transaction) [][]byte {
 	return [][]byte{}
 }
 
