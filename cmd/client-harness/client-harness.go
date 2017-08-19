@@ -28,8 +28,8 @@ func main() {
 	}
 
 	priv := privFromFile(os.Args[2])
-	pub := crypto.MarshalPublicKey(&priv.PublicKey)
 	c := client.NewClient(os.Args[1], priv)
+	pub := crypto.MarshalPublicKey(&priv.PublicKey)
 	err := c.CreateTable([]byte("wtf"), []map[string][]byte{
 		map[string][]byte{
 			"type":      []byte("table_exists"),
@@ -47,7 +47,7 @@ func main() {
 	// 			"type":      []byte("all_writers"),
 	// 			"TableName": []byte("wtf"),
 	// 		},
-	// 	}, client.InputFlag(0))
+	// 	}, client.InputFlag(1))
 
 	if err != nil {
 		panic(err)

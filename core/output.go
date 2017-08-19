@@ -24,38 +24,24 @@ const (
 	OUTPUT_TYPE_ROW_WRITER                         // ROW_WRITER       = 8
 )
 
-// Defines OutputRequirement "enum"
-// Essentially specifies how strict we are about whether we could find the output when validating
-// a transaction. Rules returns some set of outputs, and not all of them are required. In fact,
-// sometimes we are looking for the lack of an output.
-// This will work for now, but in the future, we might have outputs that have a different strictness
-// depending on which rule they are associated with, so we will need a more rule specific way of
-// dealing with this.
-type OutputRequirement int
-
-const (
-	// If the output is missing, we ignore it.
-	OUTPUT_REQUIREMENT_NONE OutputRequirement = iota // NONE = 0
-	// NONE + if the output is undecided, we place it back in the backlog
-	OUTPUT_REQUIREMENT_DECIDED // DECIDED = 1
-	// DECIDED + if the output is missing or rejected, transaction is invalid
-	OUTPUT_REQUIREMENT_REQUIRED // REQUIRED = 2
-)
-
 type Output interface {
 	Type() OutputType
 	Data() []byte
-	Requirement() OutputRequirement
 	FromData([]byte) error
 	TableName() []byte
+	SetTableName([]byte)
 }
 
 type TableNameMixin struct {
 	Table []byte
 }
 
-func (mixin TableNameMixin) TableName() []byte {
+func (mixin *TableNameMixin) TableName() []byte {
 	return mixin.Table
+}
+
+func (mixin *TableNameMixin) SetTableName(tableName []byte) {
+	mixin.Table = tableName
 }
 
 // --------------------------------
@@ -65,7 +51,7 @@ func (mixin TableNameMixin) TableName() []byte {
 // --------------------------------
 
 type TableExistsOutput struct {
-	TableNameMixin
+	*TableNameMixin
 }
 
 func (o *TableExistsOutput) Type() OutputType {
@@ -76,12 +62,8 @@ func (o *TableExistsOutput) Data() []byte {
 	return o.TableName()
 }
 
-func (o *TableExistsOutput) Requirement() OutputRequirement {
-	return OUTPUT_REQUIREMENT_DECIDED
-}
-
 func (o *TableExistsOutput) FromData(data []byte) error {
-	o.TableNameMixin.Table = data
+	o.SetTableName(data)
 	return nil
 }
 
@@ -92,7 +74,7 @@ func (o *TableExistsOutput) FromData(data []byte) error {
 // --------------------------------
 
 type ColAllowedOutput struct {
-	TableNameMixin
+	*TableNameMixin
 	ColName []byte
 }
 
@@ -104,10 +86,6 @@ func (o *ColAllowedOutput) Data() []byte {
 	// TODO: Log on error here, should never happen
 	data, _ := rlpEncode(o)
 	return data
-}
-
-func (o *ColAllowedOutput) Requirement() OutputRequirement {
-	return OUTPUT_REQUIREMENT_NONE
 }
 
 func (o *ColAllowedOutput) FromData(data []byte) error {
@@ -124,7 +102,7 @@ func (o *ColAllowedOutput) FromData(data []byte) error {
 // --------------------------------
 
 type AllColsAllowedOutput struct {
-	TableNameMixin
+	*TableNameMixin
 }
 
 func (o *AllColsAllowedOutput) Type() OutputType {
@@ -135,12 +113,8 @@ func (o *AllColsAllowedOutput) Data() []byte {
 	return o.TableName()
 }
 
-func (o *AllColsAllowedOutput) Requirement() OutputRequirement {
-	return OUTPUT_REQUIREMENT_NONE
-}
-
 func (o *AllColsAllowedOutput) FromData(data []byte) error {
-	o.TableNameMixin.Table = data
+	o.SetTableName(data)
 	return nil
 }
 
@@ -151,7 +125,7 @@ func (o *AllColsAllowedOutput) FromData(data []byte) error {
 // --------------------------------
 
 type AllAdminsOutput struct {
-	TableNameMixin
+	*TableNameMixin
 }
 
 func (o *AllAdminsOutput) Type() OutputType {
@@ -162,12 +136,8 @@ func (o *AllAdminsOutput) Data() []byte {
 	return o.TableName()
 }
 
-func (o *AllAdminsOutput) Requirement() OutputRequirement {
-	return OUTPUT_REQUIREMENT_NONE
-}
-
 func (o *AllAdminsOutput) FromData(data []byte) error {
-	o.TableNameMixin.Table = data
+	o.SetTableName(data)
 	return nil
 }
 
@@ -178,7 +148,7 @@ func (o *AllAdminsOutput) FromData(data []byte) error {
 // --------------------------------
 
 type AdminOutput struct {
-	TableNameMixin
+	*TableNameMixin
 	PubKey []byte
 }
 
@@ -190,10 +160,6 @@ func (o *AdminOutput) Data() []byte {
 	// TODO: Log on error here, should never happen
 	data, _ := rlpEncode(o)
 	return data
-}
-
-func (o *AdminOutput) Requirement() OutputRequirement {
-	return OUTPUT_REQUIREMENT_REQUIRED
 }
 
 func (o *AdminOutput) FromData(data []byte) error {
@@ -210,7 +176,7 @@ func (o *AdminOutput) FromData(data []byte) error {
 // --------------------------------
 
 type AllWritersOutput struct {
-	TableNameMixin
+	*TableNameMixin
 }
 
 func (o *AllWritersOutput) Type() OutputType {
@@ -226,7 +192,7 @@ func (o *AllWritersOutput) Requirement() OutputRequirement {
 }
 
 func (o *AllWritersOutput) FromData(data []byte) error {
-	o.TableNameMixin.Table = data
+	o.SetTableName(data)
 	return nil
 }
 
@@ -237,7 +203,7 @@ func (o *AllWritersOutput) FromData(data []byte) error {
 // --------------------------------
 
 type WriterOutput struct {
-	TableNameMixin
+	*TableNameMixin
 	PubKey []byte
 }
 
@@ -269,7 +235,7 @@ func (o *WriterOutput) FromData(data []byte) error {
 // --------------------------------
 
 type AllRowWritersOutput struct {
-	TableNameMixin
+	*TableNameMixin
 	RowId []byte
 }
 
@@ -301,7 +267,7 @@ func (o *AllRowWritersOutput) FromData(data []byte) error {
 // --------------------------------
 
 type RowWriterOutput struct {
-	TableNameMixin
+	*TableNameMixin
 	RowId  []byte
 	PubKey []byte
 }
@@ -359,23 +325,23 @@ func toDBOutput(o Output) *meddb.Output {
 func outputFromOutputType(outputType OutputType) (Output, error) {
 	switch outputType {
 	case OUTPUT_TYPE_TABLE_EXISTS:
-		return &TableExistsOutput{}, nil
+		return &TableExistsOutput{TableNameMixin: &TableNameMixin{}}, nil
 	case OUTPUT_TYPE_COL_ALLOWED:
-		return &ColAllowedOutput{}, nil
+		return &ColAllowedOutput{TableNameMixin: &TableNameMixin{}}, nil
 	case OUTPUT_TYPE_ALL_COLS_ALLOWED:
-		return &AllColsAllowedOutput{}, nil
+		return &AllColsAllowedOutput{TableNameMixin: &TableNameMixin{}}, nil
 	case OUTPUT_TYPE_ALL_ADMINS:
-		return &AllAdminsOutput{}, nil
+		return &AllAdminsOutput{TableNameMixin: &TableNameMixin{}}, nil
 	case OUTPUT_TYPE_ADMIN:
-		return &AdminOutput{}, nil
+		return &AdminOutput{TableNameMixin: &TableNameMixin{}}, nil
 	case OUTPUT_TYPE_ALL_WRITERS:
-		return &AllWritersOutput{}, nil
+		return &AllWritersOutput{TableNameMixin: &TableNameMixin{}}, nil
 	case OUTPUT_TYPE_WRITER:
-		return &WriterOutput{}, nil
+		return &WriterOutput{TableNameMixin: &TableNameMixin{}}, nil
 	case OUTPUT_TYPE_ALL_ROW_WRITERS:
-		return &AllRowWritersOutput{}, nil
+		return &AllRowWritersOutput{TableNameMixin: &TableNameMixin{}}, nil
 	case OUTPUT_TYPE_ROW_WRITER:
-		return &RowWriterOutput{}, nil
+		return &RowWriterOutput{TableNameMixin: &TableNameMixin{}}, nil
 	default:
 		return nil, errors.New(fmt.Sprintf("Invalid output type %d\n", outputType))
 	}
@@ -387,10 +353,15 @@ func NewOutputFromMap(outputType OutputType, data map[string][]byte) (Output, er
 		return nil, err
 	}
 	for fieldName, fieldValue := range data {
-		if err := common.SetStructField(coreOutput, fieldName, fieldValue); err != nil {
-			return nil, err
+		if fieldName == "TableName" {
+			coreOutput.SetTableName(fieldValue)
+		} else {
+			if err := common.SetStructField(coreOutput, fieldName, fieldValue); err != nil {
+				return nil, err
+			}
 		}
 	}
+
 	return coreOutput, nil
 }
 

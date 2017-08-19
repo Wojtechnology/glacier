@@ -19,7 +19,7 @@ func TestNewOutputFromMap(t *testing.T) {
 	assert.Nil(t, err)
 	typedO, ok := o.(*TableExistsOutput)
 	assert.True(t, ok)
-	assert.Equal(t, tableName, typedO.TableName)
+	assert.Equal(t, tableName, typedO.TableName())
 }
 
 func TestNewOutputFromMapInvalidField(t *testing.T) {

@@ -104,6 +104,7 @@ func AddBlockLoop(bc *core.Blockchain, errChannel chan<- error) {
 
 	var res core.TransactionChange
 	for cursor.Next(&res) {
+		logging.Info("New transaction")
 		if res.NewTransaction != nil {
 			// Update or insert (not delete)
 			s.addTransactions([]*core.Transaction{res.NewTransaction})
@@ -166,6 +167,9 @@ func addBlock(bc *core.Blockchain, s *blockLoopState) error {
 		}
 	}
 
+	// Remove transactions from state, they have all been dealt with at this point
+	s.removeTransactions(txs)
+
 	// Reassign all undecided transactions
 	// TODO: Maybe have a bulk write here
 	for _, tx := range undecidedTxs {
@@ -175,9 +179,6 @@ func addBlock(bc *core.Blockchain, s *blockLoopState) error {
 			return err
 		}
 	}
-
-	// Remove transactions from state, they have all been dealt with at this point
-	s.removeTransactions(txs)
 
 	// Happens after writing block, since even if this fails, these transactions will be invalidated
 	// later on.

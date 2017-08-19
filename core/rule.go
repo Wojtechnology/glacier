@@ -9,9 +9,24 @@ import (
 )
 
 type Rule interface {
-	RequestedOutputIds(*Transaction) [][]byte
+	RequestedOutputIds(*Transaction) map[string]OutputRequirement
 	Validate(*Transaction, map[string]Output, map[string][]Input) error
 }
+
+// Defines OutputRequirement "enum"
+// Essentially specifies how strict we are about whether we could find the output when validating
+// a transaction. Rules returns some set of outputs, and not all of them are required. In fact,
+// sometimes we are looking for the lack of an output.
+type OutputRequirement int
+
+const (
+	// If the output is missing, we ignore it.
+	OUTPUT_REQUIREMENT_NONE OutputRequirement = iota // NONE = 0
+	// NONE + if the output is undecided, we place it back in the backlog
+	OUTPUT_REQUIREMENT_DECIDED // DECIDED = 1
+	// DECIDED + if the output is missing or rejected, transaction is invalid
+	OUTPUT_REQUIREMENT_REQUIRED // REQUIRED = 2
+)
 
 // --------------------------------
 // TableExistsOutputMixin
@@ -20,11 +35,15 @@ type Rule interface {
 type TableExistsOutputMixin struct{}
 
 func (mixin *TableExistsOutputMixin) getTableExistsOutputHash(tx *Transaction) Hash {
-	return HashOutput(&TableExistsOutput{TableNameMixin{tx.TableName}})
+	return HashOutput(&TableExistsOutput{&TableNameMixin{tx.TableName}})
 }
 
-func (mixin *TableExistsOutputMixin) RequestedOutputIds(tx *Transaction) [][]byte {
-	return [][]byte{mixin.getTableExistsOutputHash(tx).Bytes()}
+func (mixin *TableExistsOutputMixin) RequestedOutputIds(
+	tx *Transaction) map[string]OutputRequirement {
+
+	return map[string]OutputRequirement{
+		mixin.getTableExistsOutputHash(tx).String(): OUTPUT_REQUIREMENT_DECIDED,
+	}
 }
 
 // --------------------------------
@@ -74,7 +93,7 @@ func (rule *TableMissingRule) Validate(tx *Transaction, linkedOutputs map[string
 type ColsAllowedRule struct{}
 
 func (rule *ColsAllowedRule) getAllColsAllowedOutputHash(tx *Transaction) Hash {
-	return HashOutput(&AllColsAllowedOutput{TableNameMixin{tx.TableName}})
+	return HashOutput(&AllColsAllowedOutput{&TableNameMixin{tx.TableName}})
 }
 
 func (rule *ColsAllowedRule) getColAllowedOutputHashes(tx *Transaction) []Hash {
@@ -83,7 +102,7 @@ func (rule *ColsAllowedRule) getColAllowedOutputHashes(tx *Transaction) []Hash {
 	i := 0
 	for colId, _ := range tx.Cols {
 		hashes[i] = HashOutput(&ColAllowedOutput{
-			TableNameMixin: TableNameMixin{tx.TableName},
+			TableNameMixin: &TableNameMixin{tx.TableName},
 			ColName:        []byte(colId),
 		})
 		i++
@@ -92,16 +111,16 @@ func (rule *ColsAllowedRule) getColAllowedOutputHashes(tx *Transaction) []Hash {
 	return hashes
 }
 
-func (rule *ColsAllowedRule) RequestedOutputIds(tx *Transaction) [][]byte {
+func (rule *ColsAllowedRule) RequestedOutputIds(tx *Transaction) map[string]OutputRequirement {
 	colAllowedHashes := rule.getColAllowedOutputHashes(tx)
-	outputIds := make([][]byte, len(colAllowedHashes))
+	outputReqs := map[string]OutputRequirement{}
 
-	for i, hash := range colAllowedHashes {
-		outputIds[i] = hash.Bytes()
+	for _, hash := range colAllowedHashes {
+		outputReqs[hash.String()] = OUTPUT_REQUIREMENT_NONE
 	}
 
-	outputIds = append(outputIds, rule.getAllColsAllowedOutputHash(tx).Bytes())
-	return outputIds
+	outputReqs[rule.getAllColsAllowedOutputHash(tx).String()] = OUTPUT_REQUIREMENT_NONE
+	return outputReqs
 }
 
 func (rule *ColsAllowedRule) Validate(tx *Transaction, linkedOutputs map[string]Output,
@@ -139,11 +158,13 @@ func (rule *ColsAllowedRule) Validate(tx *Transaction, linkedOutputs map[string]
 type AdminRule struct{}
 
 func (rule *AdminRule) getAllAdminsOutputHash(tx *Transaction) Hash {
-	return HashOutput(&AllAdminsOutput{TableNameMixin{tx.TableName}})
+	return HashOutput(&AllAdminsOutput{&TableNameMixin{tx.TableName}})
 }
 
-func (rule *AdminRule) RequestedOutputIds(tx *Transaction) [][]byte {
-	return [][]byte{rule.getAllAdminsOutputHash(tx).Bytes()}
+func (rule *AdminRule) RequestedOutputIds(tx *Transaction) map[string]OutputRequirement {
+	return map[string]OutputRequirement{
+		rule.getAllAdminsOutputHash(tx).String(): OUTPUT_REQUIREMENT_NONE,
+	}
 }
 
 func (rule *AdminRule) Validate(tx *Transaction, linkedOutputs map[string]Output,
@@ -200,11 +221,13 @@ func (rule *AdminRule) Validate(tx *Transaction, linkedOutputs map[string]Output
 type WriterRule struct{}
 
 func (rule *WriterRule) getAllWritersOutputHash(tx *Transaction) Hash {
-	return HashOutput(&AllWritersOutput{TableNameMixin{tx.TableName}})
+	return HashOutput(&AllWritersOutput{&TableNameMixin{tx.TableName}})
 }
 
-func (rule *WriterRule) RequestedOutputIds(tx *Transaction) [][]byte {
-	return [][]byte{rule.getAllWritersOutputHash(tx).Bytes()}
+func (rule *WriterRule) RequestedOutputIds(tx *Transaction) map[string]OutputRequirement {
+	return map[string]OutputRequirement{
+		rule.getAllWritersOutputHash(tx).String(): OUTPUT_REQUIREMENT_NONE,
+	}
 }
 
 func (rule *WriterRule) Validate(tx *Transaction, linkedOutputs map[string]Output,
@@ -262,13 +285,15 @@ type RowRule struct{}
 
 func (rule *RowRule) getAllRowWritersOutputHash(tx *Transaction) Hash {
 	return HashOutput(&AllRowWritersOutput{
-		TableNameMixin: TableNameMixin{tx.TableName},
+		TableNameMixin: &TableNameMixin{tx.TableName},
 		RowId:          tx.RowId,
 	})
 }
 
-func (rule *RowRule) RequestedOutputIds(tx *Transaction) [][]byte {
-	return [][]byte{rule.getAllRowWritersOutputHash(tx).Bytes()}
+func (rule *RowRule) RequestedOutputIds(tx *Transaction) map[string]OutputRequirement {
+	return map[string]OutputRequirement{
+		rule.getAllRowWritersOutputHash(tx).String(): OUTPUT_REQUIREMENT_NONE,
+	}
 }
 
 func (rule *RowRule) Validate(tx *Transaction, linkedOutputs map[string]Output,
@@ -326,8 +351,8 @@ type ValidOutputTypesRule struct {
 	validTypes map[OutputType]bool // map is used as a set here
 }
 
-func (rule *ValidOutputTypesRule) RequestedOutputIds(tx *Transaction) [][]byte {
-	return [][]byte{}
+func (rule *ValidOutputTypesRule) RequestedOutputIds(tx *Transaction) map[string]OutputRequirement {
+	return map[string]OutputRequirement{}
 }
 
 func (rule *ValidOutputTypesRule) Validate(tx *Transaction, linkedOutputs map[string]Output,
@@ -351,8 +376,8 @@ func (rule *ValidOutputTypesRule) Validate(tx *Transaction, linkedOutputs map[st
 
 type HasTableExistsRule struct{}
 
-func (rule *HasTableExistsRule) RequestedOutputIds(tx *Transaction) [][]byte {
-	return [][]byte{}
+func (rule *HasTableExistsRule) RequestedOutputIds(tx *Transaction) map[string]OutputRequirement {
+	return map[string]OutputRequirement{}
 }
 
 func (rule *HasTableExistsRule) Validate(tx *Transaction, linkedOutputs map[string]Output,

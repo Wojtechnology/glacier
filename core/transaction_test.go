@@ -26,8 +26,14 @@ func TestTransactionHash(t *testing.T) {
 				Data:  []byte{127},
 			},
 		},
-		Outputs: []Output{&TableExistsOutput{[]byte{0}}, &TableExistsOutput{[]byte{1}}},
-		Inputs:  []Input{&AdminInput{InputLink{}, []byte{2}}, &AdminInput{InputLink{}, []byte{3}}},
+		Outputs: []Output{
+			&TableExistsOutput{
+				&TableNameMixin{[]byte{0}},
+			}, &TableExistsOutput{
+				&TableNameMixin{[]byte{1}},
+			},
+		},
+		Inputs: []Input{&AdminInput{InputLink{}, []byte{2}}, &AdminInput{InputLink{}, []byte{3}}},
 	}
 
 	expected := rlpHash(&transactionBody{
@@ -75,8 +81,14 @@ func TestDBTransactionMapper(t *testing.T) {
 				Data:  []byte{127},
 			},
 		},
-		Outputs: []Output{&TableExistsOutput{[]byte{0}}, &TableExistsOutput{[]byte{1}}},
-		Inputs:  []Input{&AdminInput{InputLink{}, []byte{2}}, &AdminInput{InputLink{}, []byte{3}}},
+		Outputs: []Output{
+			&TableExistsOutput{
+				&TableNameMixin{[]byte{0}},
+			}, &TableExistsOutput{
+				&TableNameMixin{[]byte{1}},
+			},
+		},
+		Inputs: []Input{&AdminInput{InputLink{}, []byte{2}}, &AdminInput{InputLink{}, []byte{3}}},
 	}
 	hash := rlpHash(&transactionBody{
 		Type:      big.NewInt(2),

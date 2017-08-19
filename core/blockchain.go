@@ -68,14 +68,10 @@ func (bc *Blockchain) GetStaleTransactions(staleAge int64) ([]*Transaction, erro
 // Validates transaction.
 // Returns nil when validation is successful, returns error with reason otherwise.
 func (bc *Blockchain) ValidateTransaction(tx *Transaction) error {
-	linkedOutputIds := make([][]byte, len(tx.Inputs))
-	for i, input := range tx.Inputs {
-		linkedOutputIds[i] = input.OutputHash().Bytes()
-	}
-
-	requestedOutputIds := make([][]byte, len(linkedOutputIds))
-	for i, outputId := range linkedOutputIds {
-		requestedOutputIds[i] = outputId
+	outputReqs := map[string]OutputRequirement{}
+	for _, input := range tx.Inputs {
+		// Linked outputs are required
+		outputReqs[input.OutputHash().String()] = OUTPUT_REQUIREMENT_REQUIRED
 	}
 
 	ruleset, err := tx.GetRuleset()
@@ -83,54 +79,78 @@ func (bc *Blockchain) ValidateTransaction(tx *Transaction) error {
 		return err
 	}
 	for _, rule := range ruleset {
-		requestedOutputIds = append(requestedOutputIds, rule.RequestedOutputIds(tx)...)
-	}
-
-	// Gets all required outputs from database.
-	requiredOutputRes, err := bc.db.GetOutputs(requestedOutputIds)
-	if err != nil {
-		return err
-	}
-
-	// Get the state of all outputs.
-	acceptedOutputs := make(map[string]Output)
-	undecidedOutputs := make(map[string]Output)
-	for _, outputRes := range requiredOutputRes {
-		dbOutput := outputRes.Output
-		output, err := NewOutput(OutputType(dbOutput.Type), dbOutput.Data)
-		if err != nil {
-			return err
-		}
-		switch BlockState(outputRes.Block.State) {
-		case BLOCK_STATE_UNDECIDED:
-			undecidedOutputs[HashOutput(output).String()] = output
-		case BLOCK_STATE_ACCEPTED:
-			acceptedOutputs[HashOutput(output).String()] = output
-		}
-	}
-
-	// Look for outputs that only exist in undecided or rejected blocks and were linked to this
-	// transaction with some input. Since the rule specific output ids are not necessarily required
-	// (and if they are, the rule will validate that), we ignore it when they are missing or
-	// undecided.
-	undecidedOutputIds := make([][]byte, 0)
-	rejectedOutputIds := make([][]byte, 0) // rejected or missing
-	for _, outputId := range linkedOutputIds {
-		if _, ok := acceptedOutputs[string(outputId)]; !ok {
-			if _, undecidedOk := undecidedOutputs[string(outputId)]; undecidedOk {
-				undecidedOutputIds = append(undecidedOutputIds, outputId)
-			} else {
-				rejectedOutputIds = append(rejectedOutputIds, outputId)
+		ruleOutputReqs := rule.RequestedOutputIds(tx)
+		for outputStrId, outputReq := range ruleOutputReqs {
+			// We want the strictest requirement in the map
+			if oldOutputReq, ok := outputReqs[outputStrId]; !ok || outputReq > oldOutputReq {
+				outputReqs[outputStrId] = outputReq
 			}
 		}
 	}
 
-	if len(rejectedOutputIds) > 0 { // rejected or missing
+	i := 0
+	outputIds := make([][]byte, len(outputReqs))
+	for outputStrId, _ := range outputReqs {
+		outputIds[i] = []byte(outputStrId)
+		i++
+	}
+
+	// Gets all required outputs from database.
+	outputResponses, err := bc.db.GetOutputs(outputIds)
+	if err != nil {
+		return err
+	}
+
+	// TODO: Replace with transaction level caching of hash
+	txHash := tx.Hash().Bytes()
+
+	// Get the state of all outputs.
+	acceptedOutputs := make(map[string]Output)
+	undecidedOutputs := make(map[string]Output)
+	for _, outputRes := range outputResponses {
+		// Want to ignore outputs from the same transaction
+		if !bytes.Equal(txHash, outputRes.Transaction.Hash) {
+			dbOutput := outputRes.Output
+			output, err := NewOutput(OutputType(dbOutput.Type), dbOutput.Data)
+			// TODO: Probably just ignore the output here.
+			if err != nil {
+				return err
+			}
+			switch BlockState(outputRes.Block.State) {
+			case BLOCK_STATE_UNDECIDED:
+				undecidedOutputs[HashOutput(output).String()] = output
+			case BLOCK_STATE_ACCEPTED:
+				acceptedOutputs[HashOutput(output).String()] = output
+			}
+		}
+	}
+
+	// Look at output requirements and make sure that they are met.
+	// The strategy for this is optimisitic. I.E. if there exists an accepted and undecided version
+	// of some output, it will take the accepted version.
+	undecidedOutputIds := make([][]byte, 0)
+	rejectedOutputIds := make([][]byte, 0) // rejected or missing
+	for _, outputId := range outputIds {
+		outputStr := string(outputId)
+		if _, ok := acceptedOutputs[outputStr]; !ok {
+			req := outputReqs[outputStr]
+			if _, undecidedOk := undecidedOutputs[outputStr]; undecidedOk {
+				// At least as strict as DECIDED
+				if req >= OUTPUT_REQUIREMENT_DECIDED {
+					undecidedOutputIds = append(undecidedOutputIds, outputId)
+				}
+			} else {
+				// At least as strict as REQUIRED
+				if req >= OUTPUT_REQUIREMENT_REQUIRED {
+					rejectedOutputIds = append(rejectedOutputIds, outputId)
+				}
+			}
+		}
+	}
+
+	if len(rejectedOutputIds) > 0 { // rejected or missing and were required
 		return &MissingOutputsError{OutputIds: rejectedOutputIds}
-	} else if len(undecidedOutputIds) > 0 {
-		// TODO: Figure out correct way to deal with undecided output ids
-		// Take into consideration race conditions that can occur with transactions in the
-		// same block that reference each other.
+	} else if len(undecidedOutputIds) > 0 { // in undecided block but was required to be decided
 		return &UndecidedOutputsError{OutputIds: undecidedOutputIds}
 	}
 

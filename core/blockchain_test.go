@@ -199,7 +199,9 @@ func TestValidSignedBlock(t *testing.T) {
 	priv, err := crypto.NewPrivateKey()
 	assert.Nil(t, err)
 	me := NewNode(priv)
-	tx := &Transaction{TableName: []byte{1}}
+	tx := &Transaction{TableName: []byte{1}, Outputs: []Output{
+		&TableExistsOutput{&TableNameMixin{}},
+	}}
 	err = db.WriteTransaction(tx.toDBTransaction())
 	assert.Nil(t, err)
 
@@ -208,7 +210,8 @@ func TestValidSignedBlock(t *testing.T) {
 	txs := []*Transaction{tx}
 	b, err := bc.BuildBlock(txs)
 	assert.Nil(t, err)
-	assert.Nil(t, bc.ValidateBlock(b))
+	err = bc.ValidateBlock(b)
+	assert.Nil(t, err)
 }
 
 func TestGetOldestBlocks(t *testing.T) {

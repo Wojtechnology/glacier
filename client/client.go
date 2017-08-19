@@ -112,7 +112,7 @@ func (c *Client) populateAndSignInputs(tx *core.Transaction, inputFlag InputFlag
 	coreInputs := make([]core.Input, 0)
 	if inputFlag&INPUT_FLAG_ADMIN != 0 {
 		assocOutput := &core.AdminOutput{
-			TableNameMixin: core.TableNameMixin{Table: tx.TableName},
+			TableNameMixin: &core.TableNameMixin{Table: tx.TableName},
 			PubKey:         c.me.PubKey,
 		}
 		coreInput := &core.AdminInput{InputLink: core.InputLink{
@@ -122,7 +122,7 @@ func (c *Client) populateAndSignInputs(tx *core.Transaction, inputFlag InputFlag
 	}
 	if inputFlag&INPUT_FLAG_WRITER != 0 {
 		assocOutput := &core.WriterOutput{
-			TableNameMixin: core.TableNameMixin{Table: tx.TableName},
+			TableNameMixin: &core.TableNameMixin{Table: tx.TableName},
 			PubKey:         c.me.PubKey,
 		}
 		coreInput := &core.WriterInput{InputLink: core.InputLink{
@@ -132,7 +132,7 @@ func (c *Client) populateAndSignInputs(tx *core.Transaction, inputFlag InputFlag
 	}
 	if inputFlag&INPUT_FLAG_ROW_WRITER != 0 {
 		assocOutput := &core.RowWriterOutput{
-			TableNameMixin: core.TableNameMixin{Table: tx.TableName},
+			TableNameMixin: &core.TableNameMixin{Table: tx.TableName},
 			PubKey:         c.me.PubKey,
 		}
 		coreInput := &core.RowWriterInput{InputLink: core.InputLink{
