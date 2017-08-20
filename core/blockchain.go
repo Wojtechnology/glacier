@@ -176,6 +176,19 @@ func (bc *Blockchain) GetMyTransactionChangefeed() (*TransactionChangeCursor, er
 	return &TransactionChangeCursor{changefeed: changefeed}, nil
 }
 
+// Creates the genesis block which contains one transaction with the given `message`.
+func (bc *Blockchain) BuildGenesis(message []byte) (*Block, error) {
+	genTx := &Transaction{
+		Type: TransactionType(-1), // Reserved type should never be used for other transactions,
+		// although not a big deal if it does.
+		Cols: map[string]*Cell{
+			"message": &Cell{Data: message},
+		},
+	}
+
+	return bc.BuildBlock([]*Transaction{genTx})
+}
+
 // Builds block from given transactions.
 // DOES NOT VALIDATE TRANSACTIONS. That must be done before.
 func (bc *Blockchain) BuildBlock(txs []*Transaction) (*Block, error) {

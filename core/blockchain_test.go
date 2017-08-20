@@ -133,6 +133,35 @@ func TestDeleteTransactions(t *testing.T) {
 	assert.Equal(t, tx, fromDBTransaction(txs[0]))
 }
 
+func TestBuildGenesis(t *testing.T) {
+	db, err := meddb.NewMemoryBlockchainDB()
+	assert.Nil(t, err)
+
+	me := &Node{PubKey: []byte{69}}
+	me.PrivKey, err = crypto.NewPrivateKey()
+	assert.Nil(t, err)
+
+	bc := NewBlockchain(db, nil, me, []*Node{me})
+	b, err := bc.BuildGenesis([]byte("Yooo"))
+	assert.Nil(t, err)
+
+	sig, err := crypto.Sign(b.Hash().Bytes(), me.PrivKey)
+	assert.Nil(t, err)
+	tx := &Transaction{
+		Type: TransactionType(-1),
+		Cols: map[string]*Cell{
+			"message": &Cell{Data: []byte("Yooo")},
+		},
+	}
+	txs := []*Transaction{tx}
+	assert.Equal(t, txs, b.Transactions)
+	assert.Equal(t, me.PubKey, b.Creator)
+	assert.Equal(t, [][]byte{me.PubKey}, b.Voters)
+	assert.Equal(t, sig, b.Sig)
+	assert.Equal(t, BLOCK_STATE_UNDECIDED, b.State)
+	assertRecent(t, b.CreatedAt.Int64())
+}
+
 func TestBuildBlock(t *testing.T) {
 	db, err := meddb.NewMemoryBlockchainDB()
 	assert.Nil(t, err)
@@ -156,6 +185,7 @@ func TestBuildBlock(t *testing.T) {
 	assert.Equal(t, me.PubKey, b.Creator)
 	assert.Equal(t, [][]byte{other.PubKey}, b.Voters)
 	assert.Equal(t, sig, b.Sig)
+	assert.Equal(t, BLOCK_STATE_UNDECIDED, b.State)
 	assertRecent(t, b.CreatedAt.Int64())
 }
 
