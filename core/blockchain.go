@@ -19,9 +19,34 @@ type Blockchain struct {
 	// TODO: Federation lock
 }
 
+// Temp method, has hardcoded stuff
+func InitBlockchain(me *Node) (*Blockchain, error) {
+	addresses := []string{"localhost"}
+	database := "prod"
+
+	// Init db that contains meddb
+	db, err := meddb.NewRethinkBlockchainDB(addresses, database)
+	if err != nil {
+		return nil, err
+	}
+
+	// Init bigtable that contains cells
+	bt, err := meddb.NewRethinkBigtable(addresses, database)
+	if err != nil {
+		return nil, err
+	}
+
+	bc := NewBlockchain(
+		db,
+		bt,
+		me,
+		[]*Node{me},
+	)
+	return bc, nil
+}
+
 func NewBlockchain(db meddb.BlockchainDB, bt meddb.Bigtable,
 	me *Node, federation []*Node) *Blockchain {
-
 	return &Blockchain{
 		db:         db,
 		bt:         bt,
@@ -176,13 +201,15 @@ func (bc *Blockchain) GetMyTransactionChangefeed() (*TransactionChangeCursor, er
 	return &TransactionChangeCursor{changefeed: changefeed}, nil
 }
 
-// Creates the genesis block which contains one transaction with the given `message`.
-func (bc *Blockchain) BuildGenesis(message []byte) (*Block, error) {
+// Creates the genesis block which contains one transaction with the message in GENESIS_MESSAGE.
+// Generally this message should be some string that could not have been created before the date
+// of blockchain genesis.
+func (bc *Blockchain) BuildGenesis() (*Block, error) {
 	genTx := &Transaction{
 		Type: TransactionType(-1), // Reserved type should never be used for other transactions,
 		// although not a big deal if it does.
 		Cols: map[string]*Cell{
-			"message": &Cell{Data: message},
+			"message": &Cell{Data: []byte(GENESIS_MESSAGE)},
 		},
 	}
 

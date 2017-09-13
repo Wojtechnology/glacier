@@ -2,50 +2,12 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/wojtechnology/glacier/core"
-	"github.com/wojtechnology/glacier/crypto"
 	"github.com/wojtechnology/glacier/logging"
 	"github.com/wojtechnology/glacier/loop"
-	"github.com/wojtechnology/glacier/meddb"
 )
-
-func initBlockchain(me *core.Node) (*core.Blockchain, error) {
-	addresses := []string{"localhost"}
-	database := "prod"
-
-	// Init db that contains meddb
-	db, err := meddb.NewRethinkBlockchainDB(addresses, database)
-	if err != nil {
-		return nil, err
-	}
-
-	// Init bigtable that contains cells
-	bt, err := meddb.NewRethinkBigtable(addresses, database)
-	if err != nil {
-		return nil, err
-	}
-
-	bc := core.NewBlockchain(
-		db,
-		bt,
-		me,
-		[]*core.Node{me},
-	)
-	return bc, nil
-}
-
-func nodeFromFile(path string) *core.Node {
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		fmt.Printf("Error when reading private key: %s\n", err.Error())
-		os.Exit(1)
-	}
-
-	return core.NewNode(crypto.ParsePrivateKey(data))
-}
 
 func main() {
 	if len(os.Args) < 2 {
@@ -54,7 +16,12 @@ func main() {
 	}
 
 	path := os.Args[1]
-	bc, err := initBlockchain(nodeFromFile(path))
+	me, err := core.NewNodeFromFile(path)
+	if err != nil {
+		panic(err)
+	}
+
+	bc, err := core.InitBlockchain(me)
 	if err != nil {
 		panic(err)
 	}

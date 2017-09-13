@@ -142,7 +142,7 @@ func TestBuildGenesis(t *testing.T) {
 	assert.Nil(t, err)
 
 	bc := NewBlockchain(db, nil, me, []*Node{me})
-	b, err := bc.BuildGenesis([]byte("Yooo"))
+	b, err := bc.BuildGenesis()
 	assert.Nil(t, err)
 
 	sig, err := crypto.Sign(b.Hash().Bytes(), me.PrivKey)
@@ -150,7 +150,7 @@ func TestBuildGenesis(t *testing.T) {
 	tx := &Transaction{
 		Type: TransactionType(-1),
 		Cols: map[string]*Cell{
-			"message": &Cell{Data: []byte("Yooo")},
+			"message": &Cell{Data: []byte(GENESIS_MESSAGE)},
 		},
 	}
 	txs := []*Transaction{tx}

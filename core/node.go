@@ -2,6 +2,9 @@ package core
 
 import (
 	"crypto/ecdsa"
+	"errors"
+	"fmt"
+	"io/ioutil"
 
 	"github.com/wojtechnology/glacier/crypto"
 )
@@ -16,4 +19,13 @@ func NewNode(priv *ecdsa.PrivateKey) *Node {
 		PubKey:  crypto.MarshalPublicKey(&priv.PublicKey),
 		PrivKey: priv,
 	}
+}
+
+func NewNodeFromFile(path string) (*Node, error) {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Error when reading private key: %s\n", err.Error()))
+	}
+
+	return NewNode(crypto.ParsePrivateKey(data)), nil
 }

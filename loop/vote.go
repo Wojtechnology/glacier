@@ -11,14 +11,18 @@ type voteLoopState struct {
 	prevBlockId core.Hash
 }
 
-func newVoteLoopState() *voteLoopState {
-	// TODO: Replace with actual genesis block id
-	return &voteLoopState{prevBlockId: core.StringToHash("I AM NOT GENESIS")}
+func newVoteLoopState(genesis *core.Block) *voteLoopState {
+	return &voteLoopState{prevBlockId: genesis.Hash()}
 }
 
 // TODO: Better map/reduce type abstraction for this.
 func VoteOnBlocksLoop(bc *core.Blockchain, errChannel chan<- error) {
-	s := newVoteLoopState()
+	genesis, err := bc.BuildGenesis()
+	if err != nil {
+		errChannel <- err
+	}
+
+	s := newVoteLoopState(genesis)
 	newestB, err := getMostRecentVotedOnBlock(bc)
 	if err != nil {
 		errChannel <- err
