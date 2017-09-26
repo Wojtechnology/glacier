@@ -367,6 +367,14 @@ func (bc *Blockchain) GetRecentVotes() ([]*Vote, error) {
 	return fromDBVotes(dbVs), nil
 }
 
+func (bc *Blockchain) GetVoteChangefeed() (*VoteChangeCursor, error) {
+	changefeed, err := bc.db.GetVoteChangefeed()
+	if err != nil {
+		return nil, err
+	}
+	return &VoteChangeCursor{changefeed: changefeed}, nil
+}
+
 // -------
 // Helpers
 // -------

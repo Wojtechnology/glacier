@@ -65,3 +65,33 @@ func (cursor *BlockChangeCursor) Next(change *BlockChange) bool {
 
 	return changed
 }
+
+type VoteChange struct {
+	NewVote *Vote
+	OldVote *Vote
+}
+
+// Wrapper around a meddb vote that maps votes to core votes
+type VoteChangeCursor struct {
+	changefeed meddb.VoteChangefeed
+}
+
+func (cursor *VoteChangeCursor) Next(change *VoteChange) bool {
+	var res meddb.VoteChangefeedRes
+
+	changed := cursor.changefeed.Next(&res)
+	if changed {
+		if res.NewVal != nil {
+			change.NewVote = fromDBVote(res.NewVal)
+		} else {
+			change.NewVote = nil
+		}
+		if res.OldVal != nil {
+			change.OldVote = fromDBVote(res.OldVal)
+		} else {
+			change.OldVote = nil
+		}
+	}
+
+	return changed
+}

@@ -532,6 +532,44 @@ func (db *RethinkBlockchainDB) GetBlockChangefeed() (BlockChangefeed, error) {
 	return &RethinkBlockChangefeed{cursor: res}, nil
 }
 
+type rethinkVoteChangefeedRes struct {
+	OldVal *rethinkVote `gorethink:"old_val"`
+	NewVal *rethinkVote `gorethink:"new_val"`
+}
+
+type RethinkVoteChangefeed struct {
+	cursor *r.Cursor
+}
+
+func (cf *RethinkVoteChangefeed) Next(res *VoteChangefeedRes) bool {
+	var rethinkRes rethinkVoteChangefeedRes
+
+	changed := cf.cursor.Next(&rethinkRes)
+	if changed {
+		if rethinkRes.NewVal != nil {
+			res.NewVal = fromRethinkVote(rethinkRes.NewVal)
+		} else {
+			res.NewVal = nil
+		}
+		if rethinkRes.OldVal != nil {
+			res.OldVal = fromRethinkVote(rethinkRes.OldVal)
+		} else {
+			res.OldVal = nil
+		}
+	}
+
+	return changed
+}
+
+func (db *RethinkBlockchainDB) GetVoteChangefeed() (VoteChangefeed, error) {
+	res, err := db.voteTable().Changes().Run(db.session)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RethinkVoteChangefeed{cursor: res}, nil
+}
+
 // -------
 // Helpers
 // -------

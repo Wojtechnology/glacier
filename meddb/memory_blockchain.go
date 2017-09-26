@@ -250,3 +250,7 @@ func (db *MemoryBlockchainDB) GetAssignedTransactionChangefeed(
 func (db *MemoryBlockchainDB) GetBlockChangefeed() (BlockChangefeed, error) {
 	return nil, errors.New("Changefeeds not supported by MemoryBlockchainDB")
 }
+
+func (db *MemoryBlockchainDB) GetVoteChangefeed() (VoteChangefeed, error) {
+	return nil, errors.New("Changefeeds not supported by MemoryVotechainDB")
+}
